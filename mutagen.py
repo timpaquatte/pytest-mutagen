@@ -1,5 +1,3 @@
-from hypothesis import given, strategies as st
-
 # Global list of all mutants
 g_mutants = []
 
@@ -16,16 +14,16 @@ class Mutant(object):
     def add_mapping(self, fname, fimpl):
         self.function_mappings[fname] = fimpl
 
-    def apply_and_run(self, f):
+    def apply_and_run(self, f, tests_globals):
         global g_current_mutant
         g_current_mutant = self
         result = True
 
         saved = {}
         for (fname, fimpl) in self.function_mappings.items():  # mutate
-            if fname in globals():
-                saved[fname] = globals()[fname]
-            globals()[fname] = fimpl
+            if fname in tests_globals:
+                saved[fname] = tests_globals[fname]
+            tests_globals[fname] = fimpl
 
         try:
             f()  # run the function
@@ -33,7 +31,7 @@ class Mutant(object):
             result = False
 
         for (fname, fimpl) in saved.items():  # fix locals
-            globals()[fname] = fimpl
+            tests_globals[fname] = fimpl
 
         g_current_mutant = None
 
@@ -71,89 +69,7 @@ def mutant_of(fname, mutant):
         raise Exception("Undeclared mutant: " + mutant)
 
 
-def mutagen(suite):
+def mutagen(suite, tests_globals):
     for mutant in g_mutants:
-        assert mutant.apply_and_run(suite) is False, \
+        assert mutant.apply_and_run(suite, tests_globals) is False, \
             "Test suite passed!\n" + mutant.name + ": " + mutant.description
-
-
-# Example
-
-
-def inc(x):
-    return x + 1
-
-
-def merge_sort(arr):
-    if len(arr) > 1:
-        mid = len(arr) // 2
-        left = arr[:mid]
-        right = arr[mid:]
-
-        merge_sort(left)
-        merge_sort(right)
-
-        i = j = k = 0
-
-        while i < len(left) and j < len(right):
-            if mut("FLIP_LT", lambda: left[i] < right[j],
-                   lambda: left[i] > right[j]):
-                arr[k] = left[i]
-                i = inc(i)
-            else:
-                arr[k] = right[j]
-                j = inc(j)
-            k = inc(k)
-
-        while i < len(left):
-            arr[k] = left[i]
-            i = inc(i)
-            k = inc(k)
-
-        while j < len(right):
-            arr[k] = mut("DUP_LEFT", lambda: right[j], lambda: left[i])
-            j = inc(j)
-            k = inc(k)
-
-
-# Test Suite
-
-
-@given(st.lists(st.integers()))
-def test1(arr1):
-    arr2 = arr1.copy()
-
-    arr1.sort()
-    merge_sort(arr2)
-
-    assert arr1 == arr2
-
-
-@given(st.lists(st.integers()))
-def test2(arr):
-    arr.sort()
-
-    assert all([arr[k] <= arr[k + 1] for k in range(len(arr) - 1)])
-
-
-def suite():
-    test1()
-    test2()
-
-
-# Mutation Test Harness
-
-declare_mutants({
-    "INC_OBO": "Increment is off by one (increments by 2).",
-    "FLIP_LT": "Flip a less-than check.",
-    "DUP_LEFT": "Duplicate the left side of the list when merging."
-})
-
-
-@mutant_of("inc", "INC_OBO")
-def inc_mut(x):
-    return x + 2
-
-
-def test_mutation():
-    mutagen(suite)

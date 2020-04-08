@@ -1,6 +1,8 @@
 from hypothesis import given, strategies as st, control
 import sys
 import random as rd
+import mutagen as mg
+
 
 ######################################
 #  DEFINITION AND OPERATIONS OF BST  #
@@ -99,7 +101,7 @@ def insert(x, t):
 
     k, v = t.data
     if x[0] == k:
-        ret = mut("INSERT_NOUPDATE", lambda: BST(x, t.left, t.right),
+        ret = mg.mut("INSERT_NOUPDATE", lambda: BST(x, t.left, t.right),
                   lambda: t)
         return ret
     elif x[0] < k:
@@ -114,12 +116,12 @@ def delete(x, t):
 
     k, v = t.data
     if x < k:
-        ret = mut("DELETE_REMAINDER",
+        ret = mg.mut("DELETE_REMAINDER",
                   lambda: BST(t.data, delete(x, t.left), t.right),
                   lambda: delete(x, t.left))
         return ret
     elif x > k:
-        ret = mut("DELETE_REMAINDER",
+        ret = mg.mut("DELETE_REMAINDER",
                   lambda: BST(t.data, t.left, delete(x, t.right)),
                   lambda: delete(x, t.right))
         return ret
@@ -483,84 +485,8 @@ def test_findModel(k, t):
 #  MUTATIONS  #
 ###############
 
-# Global list of all mutants
-g_mutants = []
 
-# Current mutant (set by Mutant::apply_and_run)
-g_current_mutant = None
-
-
-class Mutant(object):
-    def __init__(self, name, description):
-        self.function_mappings = {}
-        self.name = name
-        self.description = description
-
-    def add_mapping(self, fname, fimpl):
-        self.function_mappings[fname] = fimpl
-
-    def apply_and_run(self, f):
-        global g_current_mutant
-        g_current_mutant = self
-        result = True
-
-        saved = {}
-        for (fname, fimpl) in self.function_mappings.items():  # mutate
-            if fname in globals():
-                saved[fname] = globals()[fname]
-            globals()[fname] = fimpl
-
-        try:
-            f()  # run the function
-        except Exception:
-            result = False
-
-        for (fname, fimpl) in saved.items():  # fix locals
-            globals()[fname] = fimpl
-
-        g_current_mutant = None
-
-        return result
-
-
-def mut(mutation, good, bad):
-    global g_current_mutant
-
-    if g_current_mutant and g_current_mutant.name == mutation:
-        return bad()
-    else:
-        return good()
-
-
-def declare_mutants(decls):
-    global g_mutants
-
-    for (name, description) in decls.items():
-        g_mutants.append(Mutant(name, description))
-
-
-def mutant_of(fname, mutant):
-    global g_mutants
-
-    for m in g_mutants:
-        if m.name == mutant:
-
-            def inner(f):
-                m.add_mapping(fname, f)
-                return f
-
-            return inner
-    else:
-        raise Exception("Undeclared mutant: " + mutant)
-
-
-def mutagen(suite):
-    for mutant in g_mutants:
-        assert mutant.apply_and_run(suite) is False, \
-            "Test suite passed!\n" + mutant.name + ": " + mutant.description
-
-
-declare_mutants({
+mg.declare_mutants({
     "INSERT_ERASE":
     "The insert function erases the whole tree",
     "INSERT_DUP":
@@ -583,12 +509,12 @@ declare_mutants({
 })
 
 
-@mutant_of("insert", "INSERT_ERASE")
+@mg.mutant_of("insert", "INSERT_ERASE")
 def insert_bug1(x, t):
     return BST(x, BST(), BST())
 
 
-@mutant_of("insert", "INSERT_DUP")
+@mg.mutant_of("insert", "INSERT_DUP")
 def insert_bug2(x, t):
     if t is None or isLeaf(t):
         return BST(x, BST(), BST())
@@ -600,7 +526,7 @@ def insert_bug2(x, t):
         return BST(t.data, t.left, insert(x, t.right))
 
 
-@mutant_of("delete", "DELETE_REV")
+@mg.mutant_of("delete", "DELETE_REV")
 def delete_bug5(x, t):
     if t is None or isLeaf(t):
         return t
@@ -620,7 +546,7 @@ def delete_bug5(x, t):
             return BST(m, delete(m[0], t.left), t.right)
 
 
-@mutant_of("union", "UNION_FSTOVERSND")
+@mg.mutant_of("union", "UNION_FSTOVERSND")
 def union_bug6(t1, t2):
     if isLeaf(t1):
         return t2
@@ -628,7 +554,7 @@ def union_bug6(t1, t2):
     return BST(m, delete(m[0], t1), t2)
 
 
-@mutant_of("union", "UNION_ROOT")
+@mg.mutant_of("union", "UNION_ROOT")
 def union_bug7(t1, t2):
     if isLeaf(t1):
         return t2
@@ -642,7 +568,7 @@ def union_bug7(t1, t2):
         return BST(m, t1, delete(m[0], t2))
 
 
-@mutant_of("union", "UNION_OTHERPRIORITY")
+@mg.mutant_of("union", "UNION_OTHERPRIORITY")
 def union_bug8(t1, t2):
     xs = toList(t1)
     if xs == []:
@@ -709,4 +635,4 @@ def suite():
 
 
 def test_mutation():
-    mutagen(suite)
+    mg.mutagen(suite, globals())
