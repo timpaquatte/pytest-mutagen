@@ -1,7 +1,7 @@
 from hypothesis import given, strategies as st
 import mutagen as mg
 
-
+@mg.mutable
 def inc(x):
     return x + 1
 
@@ -80,4 +80,4 @@ def inc_mut(x):
 
 
 def test_mutation():
-    mg.mutagen(suite, globals())
+    mg.mutagen(suite)

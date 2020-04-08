@@ -636,4 +636,4 @@ def suite():
 
 
 def test_mutation():
-    mg.mutagen(suite, globals())
+    mg.mutagen(suite)
