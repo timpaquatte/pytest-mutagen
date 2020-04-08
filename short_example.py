@@ -19,7 +19,7 @@ def merge_sort(arr):
 
         while i < len(left) and j < len(right):
             if mg.mut("FLIP_LT", lambda: left[i] < right[j],
-                   lambda: left[i] > right[j]):
+                      lambda: left[i] > right[j]):
                 arr[k] = left[i]
                 i = inc(i)
             else:
@@ -29,7 +29,8 @@ def merge_sort(arr):
 
         while i < len(left):
             arr[k] = left[i]
-            i = inc(i)
+            if not mg.active_mutant("SKIP_BLOCK"):
+                i = inc(i)
             k = inc(k)
 
         while j < len(right):
@@ -68,7 +69,8 @@ def suite():
 mg.declare_mutants({
     "INC_OBO": "Increment is off by one (increments by 2).",
     "FLIP_LT": "Flip a less-than check.",
-    "DUP_LEFT": "Duplicate the left side of the list when merging."
+    "DUP_LEFT": "Duplicate the left side of the list when merging.",
+    "SKIP_BLOCK": "Block"
 })
 
 

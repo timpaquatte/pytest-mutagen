@@ -38,6 +38,12 @@ class Mutant(object):
         return result
 
 
+def active_mutant(mutation):
+    global g_current_mutant
+    return g_current_mutant and \
+        g_current_mutant.name == mutation
+
+
 def mut(mutation, good, bad):
     global g_current_mutant
 
