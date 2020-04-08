@@ -3,7 +3,6 @@ import sys
 import random as rd
 import mutagen as mg
 
-
 ######################################
 #  DEFINITION AND OPERATIONS OF BST  #
 ######################################
@@ -95,6 +94,7 @@ def find(x, t):
         return find(x, t.right)
 
 
+@mg.mutable
 def insert(x, t):
     if t is None or isLeaf(t):
         return BST(x, BST(), BST())
@@ -102,7 +102,7 @@ def insert(x, t):
     k, v = t.data
     if x[0] == k:
         ret = mg.mut("INSERT_NOUPDATE", lambda: BST(x, t.left, t.right),
-                  lambda: t)
+                     lambda: t)
         return ret
     elif x[0] < k:
         return BST(t.data, insert(x, t.left), t.right)
@@ -110,6 +110,7 @@ def insert(x, t):
         return BST(t.data, t.left, insert(x, t.right))
 
 
+@mg.mutable
 def delete(x, t):
     if t is None or isLeaf(t):
         return t
@@ -117,13 +118,13 @@ def delete(x, t):
     k, v = t.data
     if x < k:
         ret = mg.mut("DELETE_REMAINDER",
-                  lambda: BST(t.data, delete(x, t.left), t.right),
-                  lambda: delete(x, t.left))
+                     lambda: BST(t.data, delete(x, t.left), t.right),
+                     lambda: delete(x, t.left))
         return ret
     elif x > k:
         ret = mg.mut("DELETE_REMAINDER",
-                  lambda: BST(t.data, t.left, delete(x, t.right)),
-                  lambda: delete(x, t.right))
+                     lambda: BST(t.data, t.left, delete(x, t.right)),
+                     lambda: delete(x, t.right))
         return ret
     else:
         if isLeaf(t.left):
@@ -135,6 +136,7 @@ def delete(x, t):
             return BST(m, delete(m[0], t.left), t.right)
 
 
+@mg.mutable
 def union(t1, t2):
     lst = toList(t1)
     if lst == []:
@@ -484,7 +486,6 @@ def test_findModel(k, t):
 ###############
 #  MUTATIONS  #
 ###############
-
 
 mg.declare_mutants({
     "INSERT_ERASE":

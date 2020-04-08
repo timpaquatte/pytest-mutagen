@@ -14,25 +14,14 @@ class Mutant(object):
     def add_mapping(self, fname, fimpl):
         self.function_mappings[fname] = fimpl
 
-    def apply_and_run(self, f, tests_globals):
+    def apply_and_run(self, f):
         global g_current_mutant
         g_current_mutant = self
         result = True
-
-        saved = {}
-        for (fname, fimpl) in self.function_mappings.items():  # mutate
-            if fname in tests_globals:
-                saved[fname] = tests_globals[fname]
-            tests_globals[fname] = fimpl
-
         try:
-            f()  # run the function
+            f()
         except Exception:
             result = False
-
-        for (fname, fimpl) in saved.items():  # fix locals
-            tests_globals[fname] = fimpl
-
         g_current_mutant = None
 
         return result
@@ -61,21 +50,33 @@ def declare_mutants(decls):
 
 
 def mutant_of(fname, mutant):
-    global g_mutants
+    def decorator(f):
+        global g_mutants
 
-    for m in g_mutants:
-        if m.name == mutant:
-
-            def inner(f):
+        for m in g_mutants:
+            if m.name == mutant:
                 m.add_mapping(fname, f)
                 return f
+        else:
+            raise Exception("Undeclared mutant: " + mutant)
 
-            return inner
-    else:
-        raise Exception("Undeclared mutant: " + mutant)
+    return decorator
 
 
-def mutagen(suite, tests_globals):
+def mutable(f):
+    def inner(*args, **kwargs):
+        global g_current_mutant
+
+        if g_current_mutant and \
+           f.__name__ in g_current_mutant.function_mappings:
+            return g_current_mutant.function_mappings[f.__name__](*args,
+                                                                  **kwargs)
+        return f(*args, **kwargs)
+
+    return inner
+
+
+def mutagen(suite):
     for mutant in g_mutants:
-        assert mutant.apply_and_run(suite, tests_globals) is False, \
+        assert mutant.apply_and_run(suite) is False, \
             "Test suite passed!\n" + mutant.name + ": " + mutant.description
