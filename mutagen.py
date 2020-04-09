@@ -1,5 +1,5 @@
 # Global list of all mutants
-g_mutant_registry = []
+g_mutant_registry = {}
 
 # Current mutant (set by Mutant::apply_and_run)
 g_current_mutant = None
@@ -46,14 +46,16 @@ def mutant_of(fname, mutant_name):
     def decorator(f):
         global g_mutant_registry
 
-        for m in g_mutant_registry:
+        for m in g_mutant_registry.values():
             if m.name == mutant_name:
                 m.add_mapping(fname, f)
-                return f
+                break
         else:
             m = Mutant(mutant_name, "")
             m.add_mapping(fname, f)
-            g_mutant_registry.append(m)
+            g_mutant_registry[mutant_name] = m
+
+        return f
 
     return decorator
 
@@ -72,8 +74,11 @@ def mutable(f):
 
 
 def mutagen(suite, mutants_to_run):
-    for mutant in g_mutant_registry:
-        if mutant.name in mutants_to_run:
-            assert mutant.apply_and_run(suite) is False, \
-                ("Test suite passed!\n" + mutant.name + ": " +
-                 mutant.description)
+    global g_mutant_registry
+
+    for mutant_name in mutants_to_run:
+        m = g_mutant_registry[mutant_name] \
+            if mutant_name in g_mutant_registry else Mutant(mutant_name, "")
+        assert m.apply_and_run(suite) is False, \
+            ("Test suite passed!\n" + m.name + ": " +
+                m.description)
