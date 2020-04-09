@@ -1,6 +1,7 @@
 from hypothesis import given, strategies as st
 import mutagen as mg
 
+
 @mg.mutable
 def inc(x):
     return x + 1
@@ -66,13 +67,6 @@ def suite():
 
 # Mutation Test Harness
 
-mg.declare_mutants({
-    "INC_OBO": "Increment is off by one (increments by 2).",
-    "FLIP_LT": "Flip a less-than check.",
-    "DUP_LEFT": "Duplicate the left side of the list when merging.",
-    "SKIP_BLOCK": "Block"
-})
-
 
 @mg.mutant_of("inc", "INC_OBO")
 def inc_mut(x):
@@ -80,4 +74,9 @@ def inc_mut(x):
 
 
 def test_mutation():
-    mg.mutagen(suite)
+    mg.mutagen(suite, [
+        "INC_OBO",
+        "FLIP_LT",
+        "DUP_LEFT",
+        "SKIP_BLOCK"
+    ])

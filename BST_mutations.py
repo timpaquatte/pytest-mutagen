@@ -487,28 +487,6 @@ def test_findModel(k, t):
 #  MUTATIONS  #
 ###############
 
-mg.declare_mutants({
-    "INSERT_ERASE":
-    "The insert function erases the whole tree",
-    "INSERT_DUP":
-    "insert can create duplicates",
-    "INSERT_NOUPDATE":
-    "insert does not update the tree isf the key already exists",
-    "DELETE_REMAINDER":
-    "delete returns the remainder of the tree from the value to delete",
-    "DELETE_REV":
-    "Key comparisons reversed in delete",
-    "UNION_FSTOVERSND":
-    ("union wrongly assumes that all keys in the first argument precede those"
-     " in the second"),
-    "UNION_ROOT":
-    ("union wrongly assumes that if the key at the root of t is smaller than"
-     " the key at the root of t', then all the keys in t will be smaller than"
-     " the key at the root of t"),
-    "UNION_OTHERPRIORITY":
-    "The second argument of has priority"
-})
-
 
 @mg.mutant_of("insert", "INSERT_ERASE")
 def insert_bug1(x, t):
@@ -636,4 +614,12 @@ def suite():
 
 
 def test_mutation():
-    mg.mutagen(suite)
+    mg.mutagen(suite, [
+        "INSERT_ERASE",
+        "INSERT_DUP",
+        "INSERT_NOUPDATE",
+        "DELETE_REMAINDER",
+        "DELETE_REV",
+        "UNION_FSTOVERSND",
+        "UNION_ROOT"
+    ])

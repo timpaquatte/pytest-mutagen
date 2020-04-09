@@ -1,5 +1,5 @@
 # Global list of all mutants
-g_mutants = []
+g_mutant_registry = []
 
 # Current mutant (set by Mutant::apply_and_run)
 g_current_mutant = None
@@ -42,23 +42,18 @@ def mut(mutation, good, bad):
         return good()
 
 
-def declare_mutants(decls):
-    global g_mutants
-
-    for (name, description) in decls.items():
-        g_mutants.append(Mutant(name, description))
-
-
-def mutant_of(fname, mutant):
+def mutant_of(fname, mutant_name):
     def decorator(f):
-        global g_mutants
+        global g_mutant_registry
 
-        for m in g_mutants:
-            if m.name == mutant:
+        for m in g_mutant_registry:
+            if m.name == mutant_name:
                 m.add_mapping(fname, f)
                 return f
         else:
-            raise Exception("Undeclared mutant: " + mutant)
+            m = Mutant(mutant_name, "")
+            m.add_mapping(fname, f)
+            g_mutant_registry.append(m)
 
     return decorator
 
@@ -76,7 +71,9 @@ def mutable(f):
     return inner
 
 
-def mutagen(suite):
-    for mutant in g_mutants:
-        assert mutant.apply_and_run(suite) is False, \
-            "Test suite passed!\n" + mutant.name + ": " + mutant.description
+def mutagen(suite, mutants_to_run):
+    for mutant in g_mutant_registry:
+        if mutant.name in mutants_to_run:
+            assert mutant.apply_and_run(suite) is False, \
+                ("Test suite passed!\n" + mutant.name + ": " +
+                 mutant.description)
