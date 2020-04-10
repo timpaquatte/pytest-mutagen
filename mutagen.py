@@ -42,12 +42,12 @@ def mut(mutation, good, bad):
         return good()
 
 
-def mutant_of(fname, mutant_name):
+def mutant_of(fname, mutant_name, description=""):
     def decorator(f):
         global g_mutant_registry
 
         if mutant_name not in g_mutant_registry:
-            g_mutant_registry[mutant_name] = Mutant(mutant_name, "")
+            g_mutant_registry[mutant_name] = Mutant(mutant_name, description)
         g_mutant_registry[mutant_name].add_mapping(fname, f)
 
         return f
@@ -68,10 +68,10 @@ def mutable(f):
     return inner
 
 
-def has_mutant(mutant_name):
+def has_mutant(mutant_name, description=""):
     def decorator(f):
         if mutant_name not in g_mutant_registry:
-            g_mutant_registry[mutant_name] = Mutant(mutant_name, "")
+            g_mutant_registry[mutant_name] = Mutant(mutant_name, description)
         return f
 
     return decorator

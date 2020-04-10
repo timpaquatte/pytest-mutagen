@@ -7,9 +7,9 @@ def inc(x):
     return x + 1
 
 
-@mg.has_mutant("FLIP_LT")
-@mg.has_mutant("SKIP_BLOCK")
-@mg.has_mutant("DUP_LEFT")
+@mg.has_mutant("FLIP_LT", description="Change < to >.")
+@mg.has_mutant("SKIP_BLOCK", description="Skip a critical block.")
+@mg.has_mutant("DUP_LEFT", description="Merge left with left, not right.")
 def merge_sort(arr):
     if len(arr) > 1:
         mid = len(arr) // 2
@@ -71,7 +71,7 @@ def suite():
 # Mutation Test Harness
 
 
-@mg.mutant_of("inc", "INC_OBO")
+@mg.mutant_of("inc", "INC_OBO", description="Increment is off by one.")
 def inc_mut(x):
     return x + 2
 
