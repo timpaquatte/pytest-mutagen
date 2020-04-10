@@ -46,14 +46,9 @@ def mutant_of(fname, mutant_name):
     def decorator(f):
         global g_mutant_registry
 
-        for m in g_mutant_registry.values():
-            if m.name == mutant_name:
-                m.add_mapping(fname, f)
-                break
-        else:
-            m = Mutant(mutant_name, "")
-            m.add_mapping(fname, f)
-            g_mutant_registry[mutant_name] = m
+        if mutant_name not in g_mutant_registry:
+            g_mutant_registry[mutant_name] = Mutant(mutant_name, "")
+        g_mutant_registry[mutant_name].add_mapping(fname, f)
 
         return f
 
@@ -73,12 +68,18 @@ def mutable(f):
     return inner
 
 
-def mutagen(suite, mutants_to_run):
+def has_mutant(mutant_name):
+    def decorator(f):
+        if mutant_name not in g_mutant_registry:
+            g_mutant_registry[mutant_name] = Mutant(mutant_name, "")
+        return f
+
+    return decorator
+
+
+def mutagen(suite):
     global g_mutant_registry
 
-    for mutant_name in mutants_to_run:
-        m = g_mutant_registry[mutant_name] \
-            if mutant_name in g_mutant_registry else Mutant(mutant_name, "")
-        assert m.apply_and_run(suite) is False, \
-            ("Test suite passed!\n" + m.name + ": " +
-                m.description)
+    for mutant in g_mutant_registry.values():
+        assert mutant.apply_and_run(suite) is False, \
+            "Test suite passed!\n" + mutant.name + ": " + mutant.description

@@ -95,6 +95,7 @@ def find(x, t):
 
 
 @mg.mutable
+@mg.has_mutant("INSERT_NOUPDATE")
 def insert(x, t):
     if t is None or isLeaf(t):
         return BST(x, BST(), BST())
@@ -111,6 +112,7 @@ def insert(x, t):
 
 
 @mg.mutable
+@mg.has_mutant("DELETE_REMAINDER")
 def delete(x, t):
     if t is None or isLeaf(t):
         return t
@@ -614,12 +616,4 @@ def suite():
 
 
 def test_mutation():
-    mg.mutagen(suite, [
-        "INSERT_ERASE",
-        "INSERT_DUP",
-        "INSERT_NOUPDATE",
-        "DELETE_REMAINDER",
-        "DELETE_REV",
-        "UNION_FSTOVERSND",
-        "UNION_ROOT"
-    ])
+    mg.mutagen(suite)

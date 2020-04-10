@@ -7,6 +7,9 @@ def inc(x):
     return x + 1
 
 
+@mg.has_mutant("FLIP_LT")
+@mg.has_mutant("SKIP_BLOCK")
+@mg.has_mutant("DUP_LEFT")
 def merge_sort(arr):
     if len(arr) > 1:
         mid = len(arr) // 2
@@ -74,9 +77,4 @@ def inc_mut(x):
 
 
 def test_mutation():
-    mg.mutagen(suite, [
-        "INC_OBO",
-        "FLIP_LT",
-        "DUP_LEFT",
-        "SKIP_BLOCK"
-    ])
+    mg.mutagen(suite)
