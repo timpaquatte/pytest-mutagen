@@ -10,6 +10,7 @@ def inc(x):
 @mg.has_mutant("FLIP_LT", description="Change < to >.")
 @mg.has_mutant("SKIP_BLOCK", description="Skip a critical block.")
 @mg.has_mutant("DUP_LEFT", description="Merge left with left, not right.")
+@mg.has_mutant("INC_OBO2")
 def merge_sort(arr):
     if len(arr) > 1:
         mid = len(arr) // 2
@@ -40,7 +41,7 @@ def merge_sort(arr):
         while j < len(right):
             arr[k] = mg.mut("DUP_LEFT", lambda: right[j], lambda: left[i])
             j = inc(j)
-            k = inc(k)
+            k = inc(k) if mg.not_mutant("INC_OBO2") else inc(k) + 1
 
 
 # Test Suite

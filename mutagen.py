@@ -33,6 +33,10 @@ def active_mutant(mutation):
         g_current_mutant.name == mutation
 
 
+def not_mutant(mutation):
+    return not active_mutant(mutation)
+
+
 def mut(mutation, good, bad):
     global g_current_mutant
 
