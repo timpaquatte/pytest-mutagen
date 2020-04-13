@@ -79,11 +79,3 @@ def has_mutant(mutant_name, description=""):
         return f
 
     return decorator
-
-
-def mutagen(suite):
-    global g_mutant_registry
-
-    for mutant in g_mutant_registry.values():
-        assert mutant.apply_and_run(suite) is False, \
-            "Test suite passed!\n" + mutant.name + ": " + mutant.description

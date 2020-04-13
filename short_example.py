@@ -64,18 +64,9 @@ def test2(arr):
     assert all([arr[k] <= arr[k + 1] for k in range(len(arr) - 1)])
 
 
-def suite():
-    test1()
-    test2()
-
-
 # Mutation Test Harness
 
 
 @mg.mutant_of("inc", "INC_OBO", description="Increment is off by one.")
 def inc_mut(x):
     return x + 2
-
-
-def test_mutation():
-    mg.mutagen(suite)
