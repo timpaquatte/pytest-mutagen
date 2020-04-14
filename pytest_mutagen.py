@@ -6,11 +6,22 @@ import sys
 
 import pytest
 
+MUTAGEN_OPTION = "--mutate"
+
 all_test_passed = True
 failed_mutants = []
 
+def pytest_addoption(parser):
+    group = parser.getgroup("mutagen", "Mutagen")
+    group.addoption(
+        MUTAGEN_OPTION,
+        action="store_true",
+        help="activate the mutation testing tool",
+    )
+
 def pytest_report_header(config):
-    return 'hypothesis-mutagen-1.0.0'
+    if config.getoption(MUTAGEN_OPTION):
+        return 'hypothesis-mutagen-1.0.0 : Mutations enabled'
 
 def pytest_report_teststatus(report, config):
     global all_test_passed
@@ -34,6 +45,10 @@ def pytest_sessionfinish(session, exitstatus):
     global g_current_mutant
     global all_test_passed
     global failed_mutants
+
+    if not session.config.getoption(MUTAGEN_OPTION):
+        return
+
     print("\nRunning mutations :")
 
     session.exitstatus = ExitCode.TESTS_FAILED
