@@ -46,7 +46,7 @@ Mutagen is a mutation-testing module designed to be used in parallel with Hypoth
 
 
 ## Run the tests
-`python3 -m pytest file_with_test_functions_and_mutations.py`
+`python3 -m pytest --mutate file_with_test_functions_and_mutations.py`
 
 ## Examples
 * The file short_example.py is a very simple example of the use of mutagen to test a merge sort function
