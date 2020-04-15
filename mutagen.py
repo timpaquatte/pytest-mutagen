@@ -1,3 +1,5 @@
+from os import path
+
 # Global list of all mutants
 g_mutant_registry = {}
 
@@ -6,10 +8,11 @@ g_current_mutant = None
 
 
 class Mutant(object):
-    def __init__(self, name, description):
+    def __init__(self, name, description, file):
         self.function_mappings = {}
         self.name = name
         self.description = description
+        self.file = file
 
     def add_mapping(self, fname, fimpl):
         self.function_mappings[fname] = fimpl
@@ -51,7 +54,7 @@ def mutant_of(fname, mutant_name, description=""):
         global g_mutant_registry
 
         if mutant_name not in g_mutant_registry:
-            g_mutant_registry[mutant_name] = Mutant(mutant_name, description)
+            g_mutant_registry[mutant_name] = Mutant(mutant_name, description, path.basename(f.__globals__['__file__']))
         g_mutant_registry[mutant_name].add_mapping(fname, f)
 
         return f
@@ -75,7 +78,7 @@ def mutable(f):
 def has_mutant(mutant_name, description=""):
     def decorator(f):
         if mutant_name not in g_mutant_registry:
-            g_mutant_registry[mutant_name] = Mutant(mutant_name, description)
+            g_mutant_registry[mutant_name] = Mutant(mutant_name, description, path.basename(f.__globals__['__file__']))
         return f
 
     return decorator

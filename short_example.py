@@ -11,6 +11,7 @@ def inc(x):
 @mg.has_mutant("SKIP_BLOCK", description="Skip a critical block.")
 @mg.has_mutant("DUP_LEFT", description="Merge left with left, not right.")
 @mg.has_mutant("INC_OBO2")
+@mg.has_mutant("NO_MUTATION")
 def merge_sort(arr):
     if len(arr) > 1:
         mid = len(arr) // 2

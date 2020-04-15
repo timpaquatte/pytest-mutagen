@@ -2,6 +2,7 @@ from mutagen import *
 from _pytest.reports import TestReport
 from _pytest.runner import runtestprotocol
 from _pytest.config import ExitCode
+from _pytest.terminal import TerminalReporter
 import sys
 
 import pytest
@@ -49,31 +50,33 @@ def pytest_sessionfinish(session, exitstatus):
     if not session.config.getoption(MUTAGEN_OPTION):
         return
 
-    print("\nRunning mutations :")
+    reporter = TerminalReporter(session.config)
+    reporter._show_progress_info = False
+    reporter._tw = session.config.get_terminal_writer()
+    reporter._tw.line()
+    reporter.write_sep("=", "mutation session starts", bold=True)
 
-    session.exitstatus = ExitCode.TESTS_FAILED
-    session.testsfailed = 1
+    for module in session.collect():
+        basename = path.basename(module.name)
+        reporter._tw.line()
+        reporter.write_line("Module " + basename + ":")
 
-    for mutant in g_mutant_registry.values():
-        print(mutant.name)
-        g_current_mutant = mutant
-        all_test_passed = True
+        for mutant in filter(lambda x: x.file == basename, g_mutant_registry.values()):
+            g_current_mutant = mutant
+            all_test_passed = True
 
-        def f():
-            for module in session.collect():
-                for x in module.collect():
-                    runtestprotocol(x)
+            def f():
+                for item in module.collect():
+                    runtestprotocol(item)
 
-        mutant.apply_and_run(f)
-        g_current_mutant = None
-        if all_test_passed:
-            print("\t/!\ ALL TESTS PASSED")
-            failed_mutants.append(mutant.name)
-            session.exitstatus = ExitCode.TESTS_FAILED
-            exitstatus = ExitCode.TESTS_FAILED
-        print()
-
-    print("Done")
+            mutant.apply_and_run(f)
+            g_current_mutant = None
+            if all_test_passed:
+                reporter.write_line("\t" + mutant.name + "\t/!\ ALL TESTS PASSED")
+                failed_mutants.append(mutant.name)
+                session.exitstatus = ExitCode.TESTS_FAILED
+            else:
+                reporter.write_line("\t" + mutant.name)
 
 def pytest_terminal_summary(terminalreporter):
         terminalreporter.section("Mutagen")
