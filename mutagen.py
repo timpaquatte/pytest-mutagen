@@ -65,10 +65,11 @@ def mutant_of(fname, mutant_name, description=""):
 def mutable(f):
     def inner(*args, **kwargs):
         global g_current_mutant
+        print(f.__qualname__)
 
         if g_current_mutant and \
-           f.__name__ in g_current_mutant.function_mappings:
-            return g_current_mutant.function_mappings[f.__name__](*args,
+           f.__qualname__ in g_current_mutant.function_mappings:
+            return g_current_mutant.function_mappings[f.__qualname__](*args,
                                                                   **kwargs)
         return f(*args, **kwargs)
 
