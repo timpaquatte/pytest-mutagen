@@ -11,7 +11,7 @@ MUTAGEN_OPTION = "--mutate"
 QUICK_MUTATIONS = "--quick-mut"
 
 all_test_passed = True
-failed_mutants = []
+failed_mutants = {}
 
 def pytest_addoption(parser):
     group = parser.getgroup("mutagen", "Mutagen")
@@ -55,13 +55,14 @@ def pytest_sessionfinish(session, exitstatus):
     if not session.config.getoption(MUTAGEN_OPTION):
         return
 
-    reporter = TerminalReporter(session.config)
-    reporter._tw = session.config.get_terminal_writer()
+    reporter = session.config.pluginmanager.get_plugin("terminalreporter")
     reporter._tw.line()
     reporter.write_sep("=", "mutation session starts", bold=True)
+    reporter.showfspath = False
 
     for module in session.collect():
         basename = path.basename(module.name)
+        failed_mutants[basename] = []
         reporter._tw.line()
         reporter.write_line("Module " + basename + ":")
 
@@ -85,15 +86,18 @@ def pytest_sessionfinish(session, exitstatus):
 
             if all_test_passed:
                 reporter.write_line("\t" + mutant.name + "\t/!\ ALL TESTS PASSED")
-                failed_mutants.append(mutant.name)
+                failed_mutants[basename].append(mutant.name)
                 session.exitstatus = ExitCode.TESTS_FAILED
             else:
                 reporter.write_line("\t" + mutant.name)
 
 def pytest_terminal_summary(terminalreporter):
-        terminalreporter.section("Mutagen")
+    terminalreporter.section("Mutagen")
 
-        if failed_mutants != []:
-            print("The following mutants passed all tests:")
-        for mutant in failed_mutants:
-            print(mutant)
+    for module in failed_mutants:
+        if failed_mutants[module] != []:
+            terminalreporter.write("[ERROR]   ", **{"red": True})
+            terminalreporter.write_line(module + ": The following mutants passed all tests: " + str(failed_mutants[module]))
+        else:
+            terminalreporter.write("[SUCCESS] ", **{"green": True})
+            terminalreporter.write_line(module + ": All mutants made at least one test fail")
