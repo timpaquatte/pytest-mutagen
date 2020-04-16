@@ -8,6 +8,7 @@ import sys
 import pytest
 
 MUTAGEN_OPTION = "--mutate"
+QUICK_MUTATIONS = "--quick-mut"
 
 all_test_passed = True
 failed_mutants = []
@@ -19,10 +20,14 @@ def pytest_addoption(parser):
         action="store_true",
         help="activate the mutation testing tool",
     )
+    group.addoption(
+        QUICK_MUTATIONS,
+        action="store_true",
+        help="each mutant stops after the first failed test"
+    )
 
 def pytest_report_header(config):
-    if config.getoption(MUTAGEN_OPTION):
-        return 'hypothesis-mutagen-1.0.0 : Mutations enabled'
+    return 'hypothesis-mutagen-1.0.0 : Mutations ' + ('enabled' if config.getoption(MUTAGEN_OPTION) else 'disabled')
 
 def pytest_report_teststatus(report, config):
     global all_test_passed
@@ -51,7 +56,6 @@ def pytest_sessionfinish(session, exitstatus):
         return
 
     reporter = TerminalReporter(session.config)
-    reporter._show_progress_info = False
     reporter._tw = session.config.get_terminal_writer()
     reporter._tw.line()
     reporter.write_sep("=", "mutation session starts", bold=True)
@@ -66,11 +70,19 @@ def pytest_sessionfinish(session, exitstatus):
             all_test_passed = True
 
             def f():
+                skip = False
                 for item in module.collect():
-                    runtestprotocol(item)
+                    if not skip:
+                        reports = runtestprotocol(item)
+                        if session.config.getoption(QUICK_MUTATIONS):
+                            for report in filter(lambda x: x.outcome == "mutfailed", reports):
+                                skip = True
+                    else:
+                        reporter.write(" ")
 
             mutant.apply_and_run(f)
             g_current_mutant = None
+
             if all_test_passed:
                 reporter.write_line("\t" + mutant.name + "\t/!\ ALL TESTS PASSED")
                 failed_mutants.append(mutant.name)
