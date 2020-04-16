@@ -20,7 +20,7 @@ Mutagen is a mutation-testing module designed to be used in parallel with Hypoth
 `from hypothesis_mutagen import pytest_mutagen as mg`
 
 ## Declare a mutant
-* Mutant function
+* **Mutant function** \
 	To mutate a whole function you firstly have to declare it mutable with the `@mg.mutable` decorator. Then you have to write the new version of the function, decorated with `@mg.mutant_of(function_name, mutant_name, description (optional))`.
 	Example :
 
@@ -34,7 +34,7 @@ Mutagen is a mutation-testing module designed to be used in parallel with Hypoth
 		return x + 2
 	```
 
-* Mutant expression
+* **Mutant expression** \
 	If you don't want to change the whole function but only one line, you must decorate the function with `@mg.has_mutant(mutant_name, description (optional))`, then you have two ways to do it :
   
   * By replacing the expression by the `mg.mut(mutant_name, normal_expression, mutant_expression)` function, using lambda expressions.
