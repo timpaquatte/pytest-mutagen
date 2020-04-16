@@ -23,15 +23,17 @@ Mutagen is a mutation-testing module designed to be used in parallel with Hypoth
 * Mutant function
 	To mutate a whole function you firstly have to declare it mutable with the `@mg.mutable` decorator. Then you have to write the new version of the function, decorated with `@mg.mutant_of(function_name, mutant_name, description (optional))`.
 	Example :
-	```
+
+	```python
 	@mg.mutable
 	def  inc(x):
 		return x + 1
-	
+
 	@mg.mutant_of("inc", "INC_OBO", description="Increment is off by one.")
 	def  inc_mut(x):
 		return x + 2
 	```
+
 * Mutant expression
 	If you don't want to change the whole function but only one line, you must decorate the function with `@mg.has_mutant(mutant_name, description (optional))`, then you have two ways to do it :
   
@@ -44,6 +46,31 @@ Mutagen is a mutation-testing module designed to be used in parallel with Hypoth
 			`k = inc(k) if mg.not_mutant("INC_OBO2") else inc(k) + 1`
   If you want to mutate several expressions in the same function you have to use one decorator per mutation.
 
+### Mutating a class method
+
+In fact the `@mutant_of` decorator doesn't require the function name but its fully qualified name. It does not change anything for top-level functions but in the case of a class method you need to write the dotted path leading to the object from the module top-level.
+Example :
+```python
+class Foo:
+	@mg.mutable
+	def bar(self):
+		pass
+	
+	@staticmethod
+	@mg.mutable
+	def static_bar():
+		pass
+
+@mg.mutant_of("Foo.bar", "")
+def bar_mut(self):
+	pass
+
+@mg.mutant_of("Foo.static_bar", "")
+def static_bar_mut():
+	pass
+```
+
+:warning: **Mutating a static method**: Make sure that the `@staticmethod` decorator is above the `@mg.mutable` one
 
 ## Run the tests
 `python3 -m pytest --mutate file_with_test_functions_and_mutations.py`
