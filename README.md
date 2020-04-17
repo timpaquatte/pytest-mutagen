@@ -35,7 +35,7 @@ Mutagen is a mutation-testing module designed to be used in parallel with Hypoth
 	```
 
 * **Mutant expression** \
-	If you don't want to change the whole function but only one line, you must decorate the function with `@mg.has_mutant(mutant_name, description (optional))`, then you have two ways to do it :
+	If you don't want to change the whole function but only one line, you must decorate the function with `@mg.has_mutant(mutant_name, filename (optional), description (optional))` where filename is the name of the test file where you want to apply this mutant. If you don't specify a filename it will be set to the file where `has_mutant` is written. Then you have two ways to do it :
   
   * By replacing the expression by the `mg.mut(mutant_name, normal_expression, mutant_expression)` function, using lambda expressions.
 			Example :
@@ -74,6 +74,8 @@ def static_bar_mut():
 
 ## Run the tests
 `python3 -m pytest --mutate file_with_test_functions_and_mutations.py`
+
+> The `--quick-mut` option will stop each mutant after its first failed test. If not specified each mutant will run the whole test suite
 
 ## Examples
 * The file short_example.py is a very simple example of the use of mutagen to test a merge sort function
