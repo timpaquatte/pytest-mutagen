@@ -65,7 +65,6 @@ def mutant_of(fname, mutant_name, description=""):
 def mutable(f):
     def inner(*args, **kwargs):
         global g_current_mutant
-        print(f.__qualname__)
 
         if g_current_mutant and \
            f.__qualname__ in g_current_mutant.function_mappings:
@@ -76,10 +75,10 @@ def mutable(f):
     return inner
 
 
-def has_mutant(mutant_name, description=""):
+def has_mutant(mutant_name, file=None, description=""):
     def decorator(f):
         if mutant_name not in g_mutant_registry:
-            g_mutant_registry[mutant_name] = Mutant(mutant_name, description, path.basename(f.__globals__['__file__']))
+            g_mutant_registry[mutant_name] = Mutant(mutant_name, description, file if file else path.basename(f.__globals__['__file__']))
         return f
 
     return decorator
