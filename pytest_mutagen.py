@@ -62,6 +62,11 @@ def pytest_sessionfinish(session, exitstatus):
 
     for module in session.collect():
         basename = path.basename(module.name)
+        collection = module.collect()
+
+        if type(collection) != type([]):
+            continue
+
         failed_mutants[basename] = []
         reporter._tw.line()
         reporter.write_line("Module " + basename + ":")
@@ -70,14 +75,17 @@ def pytest_sessionfinish(session, exitstatus):
             g_current_mutant = mutant
             all_test_passed = True
 
+
             def f():
                 skip = False
-                for item in module.collect():
+                for item in collection:
                     if not skip:
+                        saved_globals = modify_environment(item, mutant)
                         reports = runtestprotocol(item)
                         if session.config.getoption(QUICK_MUTATIONS):
                             for report in filter(lambda x: x.outcome == "mutfailed", reports):
                                 skip = True
+                        restore_environment(item, mutant, saved_globals)
                     else:
                         reporter.write(" ")
 
@@ -101,3 +109,31 @@ def pytest_terminal_summary(terminalreporter):
         else:
             terminalreporter.write("[SUCCESS] ", **{"green": True})
             terminalreporter.write_line(module + ": All mutants made at least one test fail")
+
+def modify_environment(item, mutant):
+    saved = {}
+
+    for func, repl in mutant.function_mappings.items():
+        if not "." in func:
+            if func in item.function.__globals__:
+                saved[func] = item.function.__globals__[func]
+            item.function.__globals__[func] = repl
+        else:
+            l = func.split(".", 1)
+            if l[0] in item.function.__globals__:
+                saved[func] = getattr(item.function.__globals__[l[0]], l[1])
+                setattr(item.function.__globals__[l[0]], l[1], repl)
+            else:
+                print(l[0], " is not in the globals of ", item.function)
+
+    return saved
+
+def restore_environment(item, mutant, saved):
+    for func in saved:
+        if not "." in func:
+            if func in item.function.__globals__:
+                item.function.__globals__[func] = saved[func]
+        else:
+            l = func.split(".", 1)
+            if l[0] in item.function.__globals__:
+                setattr(item.function.__globals__[l[0]], l[1], saved[func])
