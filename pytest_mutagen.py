@@ -113,27 +113,36 @@ def pytest_terminal_summary(terminalreporter):
 def modify_environment(item, mutant):
     saved = {}
 
-    for func, repl in mutant.function_mappings.items():
-        if not "." in func:
-            if func in item.function.__globals__:
-                saved[func] = item.function.__globals__[func]
-            item.function.__globals__[func] = repl
+    for func_name, repl in mutant.function_mappings.items():
+        if hasattr(item.function, "is_hypothesis_test") and getattr(item.function, "is_hypothesis_test"):
+            f = getattr(item.function, "hypothesis").inner_test
         else:
-            l = func.split(".", 1)
-            if l[0] in item.function.__globals__:
-                saved[func] = getattr(item.function.__globals__[l[0]], l[1])
-                setattr(item.function.__globals__[l[0]], l[1], repl)
-            else:
-                print(l[0], " is not in the globals of ", item.function)
+            f = item.function
+
+        if not "." in func_name:
+            if func_name in f.__globals__:
+                saved[func_name] = f.__globals__[func_name]
+                f.__globals__[func_name] = repl
+        else:
+            l = func_name.split(".", 1)
+            if l[0] in f.__globals__:
+                saved[func_name] = f.__globals__[l[0]].__dict__[l[1]]
+                if isinstance(saved[func_name], staticmethod):
+                    setattr(f.__globals__[l[0]], l[1], staticmethod(repl))
+                else:
+                    setattr(f.__globals__[l[0]], l[1], repl)
 
     return saved
 
 def restore_environment(item, mutant, saved):
-    for func in saved:
-        if not "." in func:
-            if func in item.function.__globals__:
-                item.function.__globals__[func] = saved[func]
+    if hasattr(item.function, "is_hypothesis_test") and getattr(item.function, "is_hypothesis_test"):
+        f = getattr(item.function, "hypothesis").inner_test
+    else:
+        f = item.function
+
+    for func_name in saved:
+        if not "." in func_name:
+            f.__globals__[func_name] = saved[func_name]
         else:
-            l = func.split(".", 1)
-            if l[0] in item.function.__globals__:
-                setattr(item.function.__globals__[l[0]], l[1], saved[func])
+            l = func_name.split(".", 1)
+            setattr(f.__globals__[l[0]], l[1], saved[func_name])
