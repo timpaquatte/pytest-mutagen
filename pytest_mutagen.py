@@ -45,6 +45,25 @@ def pytest_runtest_makereport(item, call):
         report.outcome = "mut" + report.outcome
     return report
 
+def check_cache_and_rearrange(session, mutant_name, collection):
+    cached_failures = session.config.cache.get("mutagen/" + mutant_name, None)
+    expected_failures = []
+    expected_successes = []
+    if not cached_failures is None:
+        for item in collection:
+            if get_func_from_item(item).__qualname__ in cached_failures:
+                expected_failures.append(item)
+            else:
+                expected_successes.append(item)
+    session.config.cache.set("mutagen/" + mutant_name, [])
+    return expected_failures + expected_successes
+
+def write_in_cache(session, item, mutant_name):
+    l = session.config.cache.get("mutagen/" + mutant_name, None)
+    new_val = get_func_from_item(item).__qualname__
+    session.config.cache.set("mutagen/" + mutant_name, ([] if l is None else l) + [new_val])
+
+
 @pytest.hookimpl(trylast=True)
 def pytest_sessionfinish(session, exitstatus):
     global g_mutant_registry
@@ -64,7 +83,7 @@ def pytest_sessionfinish(session, exitstatus):
         basename = path.basename(module.name)
         collection = module.collect()
 
-        if type(collection) != type([]):
+        if not isinstance(collection, list):
             continue
 
         failed_mutants[basename] = []
@@ -75,6 +94,7 @@ def pytest_sessionfinish(session, exitstatus):
             g_current_mutant = mutant
             all_test_passed = True
 
+            collection = check_cache_and_rearrange(session, mutant.name, collection)
 
             def f():
                 skip = False
@@ -82,8 +102,9 @@ def pytest_sessionfinish(session, exitstatus):
                     if not skip:
                         saved_globals = modify_environment(item, mutant)
                         reports = runtestprotocol(item)
-                        if session.config.getoption(QUICK_MUTATIONS):
-                            for report in filter(lambda x: x.outcome == "mutfailed", reports):
+                        if any(report.outcome == "mutfailed" for report in reports):
+                            write_in_cache(session, item, mutant.name)
+                            if session.config.getoption(QUICK_MUTATIONS):
                                 skip = True
                         restore_environment(item, mutant, saved_globals)
                     else:
@@ -110,14 +131,16 @@ def pytest_terminal_summary(terminalreporter):
             terminalreporter.write("[SUCCESS] ", **{"green": True})
             terminalreporter.write_line(module + ": All mutants made at least one test fail")
 
+def get_func_from_item(item):
+    if hasattr(item.function, "is_hypothesis_test") and getattr(item.function, "is_hypothesis_test"):
+        return getattr(item.function, "hypothesis").inner_test
+    return item.function
+
 def modify_environment(item, mutant):
     saved = {}
 
     for func_name, repl in mutant.function_mappings.items():
-        if hasattr(item.function, "is_hypothesis_test") and getattr(item.function, "is_hypothesis_test"):
-            f = getattr(item.function, "hypothesis").inner_test
-        else:
-            f = item.function
+        f = get_func_from_item(item)
 
         if not "." in func_name:
             if func_name in f.__globals__:
