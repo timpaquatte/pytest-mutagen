@@ -127,8 +127,12 @@ def modify_environment(item, mutant):
             l = func_name.split(".", 1)
             if l[0] in f.__globals__:
                 saved[func_name] = f.__globals__[l[0]].__dict__[l[1]]
+
                 if isinstance(saved[func_name], staticmethod):
                     setattr(f.__globals__[l[0]], l[1], staticmethod(repl))
+                elif isinstance(saved[func_name], property):
+                    new_prop = property(fget=repl, fset=saved[func_name].fset, fdel=saved[func_name].fdel)
+                    setattr(f.__globals__[l[0]], l[1], new_prop)
                 else:
                     setattr(f.__globals__[l[0]], l[1], repl)
 
