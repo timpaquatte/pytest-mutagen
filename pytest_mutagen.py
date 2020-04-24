@@ -55,8 +55,9 @@ def check_cache_and_rearrange(session, mutant_name, collection):
                 expected_failures.append(item)
             else:
                 expected_successes.append(item)
-    session.config.cache.set("mutagen/" + mutant_name, [])
-    return expected_failures + expected_successes
+        session.config.cache.set("mutagen/" + mutant_name, [])
+        return expected_failures + expected_successes
+    return collection
 
 def write_in_cache(session, item, mutant_name):
     l = session.config.cache.get("mutagen/" + mutant_name, None)
