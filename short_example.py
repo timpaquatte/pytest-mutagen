@@ -2,7 +2,6 @@ from hypothesis import given, strategies as st
 import mutagen as mg
 
 
-@mg.mutable
 def inc(x):
     return x + 1
 

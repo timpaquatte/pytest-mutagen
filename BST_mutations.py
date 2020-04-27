@@ -94,7 +94,6 @@ def find(x, t):
         return find(x, t.right)
 
 
-@mg.mutable
 @mg.has_mutant("INSERT_NOUPDATE")
 def insert(x, t):
     if t is None or isLeaf(t):
@@ -111,7 +110,6 @@ def insert(x, t):
         return BST(t.data, t.left, insert(x, t.right))
 
 
-@mg.mutable
 @mg.has_mutant("DELETE_REMAINDER")
 def delete(x, t):
     if t is None or isLeaf(t):
@@ -138,7 +136,6 @@ def delete(x, t):
             return BST(m, delete(m[0], t.left), t.right)
 
 
-@mg.mutable
 def union(t1, t2):
     lst = toList(t1)
     if lst == []:
