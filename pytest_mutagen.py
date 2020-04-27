@@ -137,6 +137,14 @@ def get_func_from_item(item):
         return getattr(item.function, "hypothesis").inner_test
     return item.function
 
+def get_object_to_modify(func_name, f, repl):
+    obj_to_modify = None
+    if func_name in f.__globals__:
+        obj_to_modify = f.__globals__[func_name]
+    elif func_name in repl.__globals__:
+        obj_to_modify = repl.__globals__[func_name]
+    return obj_to_modify
+
 def modify_environment(item, mutant):
     saved = {}
 
@@ -144,21 +152,25 @@ def modify_environment(item, mutant):
         f = get_func_from_item(item)
 
         if not "." in func_name:
-            if func_name in f.__globals__:
-                saved[func_name] = f.__globals__[func_name].__code__
-                f.__globals__[func_name].__code__ = repl.__code__
+            func_to_modify = get_object_to_modify(func_name, f, repl)
+
+            if not func_to_modify is None:
+                saved[func_name] = func_to_modify.__globals__[func_name].__code__
+                func_to_modify.__globals__[func_name].__code__ = repl.__code__
         else:
             l = func_name.split(".", 1)
-            if l[0] in f.__globals__:
-                saved[func_name] = f.__globals__[l[0]].__dict__[l[1]]
+            class_to_modify = get_object_to_modify(l[0], f, repl)
+
+            if not class_to_modify is None:
+                saved[func_name] = class_to_modify.__dict__[l[1]]
 
                 if isinstance(saved[func_name], staticmethod):
-                    setattr(f.__globals__[l[0]], l[1], staticmethod(repl))
+                    setattr(class_to_modify, l[1], staticmethod(repl))
                 elif isinstance(saved[func_name], property):
                     new_prop = property(fget=repl, fset=saved[func_name].fset, fdel=saved[func_name].fdel)
-                    setattr(f.__globals__[l[0]], l[1], new_prop)
+                    setattr(class_to_modify, l[1], new_prop)
                 else:
-                    setattr(f.__globals__[l[0]], l[1], repl)
+                    setattr(class_to_modify, l[1], repl)
 
     return saved
 
@@ -170,7 +182,13 @@ def restore_environment(item, mutant, saved):
 
     for func_name in saved:
         if not "." in func_name:
-            f.__globals__[func_name].__code__ = saved[func_name]
+            if func_name in f.__globals__:
+                f.__globals__[func_name].__code__ = saved[func_name]
+            else:
+                mutant.function_mappings[func_name].__globals__[func_name].__code__ = saved[func_name]
         else:
             l = func_name.split(".", 1)
-            setattr(f.__globals__[l[0]], l[1], saved[func_name])
+            if l[0] in f.__globals__:
+                setattr(f.__globals__[l[0]], l[1], saved[func_name])
+            else:
+                setattr(mutant.function_mappings[func_name].__globals__[l[0]], l[1], saved[func_name])
