@@ -1,5 +1,17 @@
 # Mutagen
-Mutagen is a mutation-testing module designed to be used in parallel with Hypothesis. It allows you to manually define mutant versions of your functions/expressions in order to check that your test suite catches the mistakes.
+
+Mutagen is a plugin to pytest that makes it easy to do mutation testing. Mutation testing is a
+method of testing your tests. Mutagen helps you to define "mutant" versions of your code---code
+which is intentionally buggy---then you run your test suite on these mutants and verify that your
+tests actually catch the bugs. Mutation testing helps you to gauge test coverage and verify that
+your tests are good enough to exercise interesting behaviors in your code.
+
+## For Property-Based Testing
+
+If you are a user of a *property-based testing* framework such as Hypothesis, mutation can also be
+used to test your input generators. It is relatively easy to write a generator that cannot generate
+a certain kind of input. Mutation testing can be used to find those gaps.
+
 
 # Installation
 * Clone this repository
@@ -22,7 +34,7 @@ Mutagen is a mutation-testing module designed to be used in parallel with Hypoth
 ## Declare a mutant
 * **Mutant function** \
 	If you want to run the tests from testfile.py with some mutations, you can either write the mutations in testfile.py or in a new file by using `from testfile import *`. If the mutations affect an object (function or class) you have to be sure that this object exists in the `__globals__` symbols table of either the test functions or the mutated functions. For this purpose you can simply write `from [your_module] import [target_object]` in the test file or in the mutation file.
-	To mutate a whole function you have to write the new version of the function, decorated with `@mg.mutant_of(function_qual_name, mutant_name, description (optional))`. 
+	To mutate a whole function you have to write the new version of the function, decorated with `@mg.mutant_of(function_qual_name, mutant_name, description (optional))`.
 	Example :
 
 	```python
@@ -36,7 +48,7 @@ Mutagen is a mutation-testing module designed to be used in parallel with Hypoth
 
 * **Mutant expression** \
 	If you don't want to change the whole function but only one line, you must decorate the function with `@mg.has_mutant(mutant_name, filename (optional), description (optional))` where filename is the name of the mutation file. If you don't specify a filename it will be set to the file where `has_mutant` is written. Then you have two ways to do it :
-  
+
   * By replacing the expression by the `mg.mut(mutant_name, normal_expression, mutant_expression)` function, using lambda expressions.
 			Example :
 			`mg.mut("FLIP_LT", lambda: a < b, lambda: b < a)`
@@ -54,7 +66,7 @@ Example :
 class Foo:
 	def bar(self):
 		pass
-	
+
 	@staticmethod
 	def static_bar():
 		pass
