@@ -45,8 +45,8 @@ def pytest_runtest_makereport(item, call):
         report.outcome = "mut" + report.outcome
     return report
 
-def check_cache_and_rearrange(session, mutant_name, collection):
-    cached_failures = session.config.cache.get("mutagen/" + mutant_name, None)
+def check_cache_and_rearrange(module_name, session, mutant_name, collection):
+    cached_failures = session.config.cache.get("mutagen/" + module_name + "/" + mutant_name, None)
     expected_failures = []
     expected_successes = []
     if not cached_failures is None:
@@ -55,14 +55,14 @@ def check_cache_and_rearrange(session, mutant_name, collection):
                 expected_failures.append(item)
             else:
                 expected_successes.append(item)
-        session.config.cache.set("mutagen/" + mutant_name, [])
+        session.config.cache.set("mutagen/" + module_name + "/" + mutant_name, [])
         return expected_failures + expected_successes
     return collection
 
-def write_in_cache(session, item, mutant_name):
-    l = session.config.cache.get("mutagen/" + mutant_name, None)
+def write_in_cache(module_name, session, item, mutant_name):
+    l = session.config.cache.get("mutagen/" + module_name + "/" + mutant_name, None)
     new_val = get_func_from_item(item).__qualname__
-    session.config.cache.set("mutagen/" + mutant_name, ([] if l is None else l) + [new_val])
+    session.config.cache.set("mutagen/" + module_name + "/" + mutant_name, ([] if l is None else l) + [new_val])
 
 
 @pytest.hookimpl(trylast=True)
@@ -95,7 +95,7 @@ def pytest_sessionfinish(session, exitstatus):
             g_current_mutant = mutant
             all_test_passed = True
 
-            collection = check_cache_and_rearrange(session, mutant.name, collection)
+            collection = check_cache_and_rearrange(basename, session, mutant.name, collection)
 
             def f():
                 skip = False
@@ -104,7 +104,7 @@ def pytest_sessionfinish(session, exitstatus):
                         saved_globals = modify_environment(item, mutant)
                         reports = runtestprotocol(item)
                         if any(report.outcome == "mutfailed" for report in reports):
-                            write_in_cache(session, item, mutant.name)
+                            write_in_cache(basename, session, item, mutant.name)
                             if session.config.getoption(QUICK_MUTATIONS):
                                 skip = True
                         restore_environment(item, mutant, saved_globals)
