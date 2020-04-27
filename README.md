@@ -8,9 +8,9 @@ your tests are good enough to exercise interesting behaviors in your code.
 
 ## For Property-Based Testing
 
-If you are a user of a *property-based testing* framework such as Hypothesis, mutation can also be
-used to test your input generators. It is relatively easy to write a generator that cannot generate
-a certain kind of input. Mutation testing can be used to find those gaps.
+If you are a user of a *property-based testing* framework such as Hypothesis, mutation testing can
+also be used to test your input generators. It is relatively easy to write a generator that cannot
+generate a certain kind of input. Mutation testing can be used to find those gaps.
 
 
 # Installation
