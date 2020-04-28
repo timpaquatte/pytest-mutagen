@@ -1,4 +1,4 @@
-from hypothesis_mutagen import pytest_mutagen as mg
+import pytest_mutagen as mg
 
 from testfile import *
 

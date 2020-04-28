@@ -27,7 +27,7 @@ def pytest_addoption(parser):
     )
 
 def pytest_report_header(config):
-    return 'hypothesis-mutagen-1.0.0 : Mutations ' + ('enabled' if config.getoption(MUTAGEN_OPTION) else 'disabled')
+    return 'pytest-mutagen-1.0 : Mutations ' + ('enabled' if config.getoption(MUTAGEN_OPTION) else 'disabled')
 
 def pytest_report_teststatus(report, config):
     global all_test_passed

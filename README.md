@@ -19,17 +19,17 @@ generate a certain kind of input. Mutation testing can be used to find those gap
 	```
 	python3 -c "import sys; print(sys.path)"
 	```
-* Create in this folder a symbolic link to the hypothesis-mutagen repository previously cloned :
+* Create in this folder a symbolic link to the pytest-mutagen repository previously cloned :
 	```
-	ln -s hypothesis_mutagen /path/to/hypothesis-mutagen
+	ln -s /path/to/pytest-mutagen pytest_mutagen
 	```
 * Install it with pip
 	```
-	python3 -m pip install -e /path/to/symbolic/link/hypothesis_mutagen
+	python3 -m pip install -e /path/to/symbolic/link/pytest_mutagen
 	```
 # Usage
 ## Python import
-`from hypothesis_mutagen import pytest_mutagen as mg`
+`import pytest_mutagen as mg`
 
 ## Declare a mutant
 * **Mutant function** \
