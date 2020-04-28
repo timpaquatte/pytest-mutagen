@@ -91,7 +91,7 @@ def pytest_sessionfinish(session, exitstatus):
         reporter._tw.line()
         reporter.write_line("Module " + basename + ":")
 
-        for mutant in filter(lambda x: x.file == basename, g_mutant_registry.values()):
+        for mutant in filter(lambda x: x.file == basename, g_mutant_registry[basename].values()):
             g_current_mutant = mutant
             all_test_passed = True
 

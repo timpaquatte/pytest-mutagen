@@ -52,10 +52,14 @@ def mut(mutation, good, bad):
 def mutant_of(fname, mutant_name, description=""):
     def decorator(f):
         global g_mutant_registry
+        basename = path.basename(f.__globals__['__file__'])
 
-        if mutant_name not in g_mutant_registry:
-            g_mutant_registry[mutant_name] = Mutant(mutant_name, description, path.basename(f.__globals__['__file__']))
-        g_mutant_registry[mutant_name].add_mapping(fname, f)
+        if basename not in g_mutant_registry:
+            g_mutant_registry[basename] = {}
+
+        if mutant_name not in g_mutant_registry[basename]:
+            g_mutant_registry[basename][mutant_name] = Mutant(mutant_name, description, basename)
+        g_mutant_registry[basename][mutant_name].add_mapping(fname, f)
 
         return f
 
@@ -77,8 +81,12 @@ def mutable(f):
 
 def has_mutant(mutant_name, file=None, description=""):
     def decorator(f):
-        if mutant_name not in g_mutant_registry:
-            g_mutant_registry[mutant_name] = Mutant(mutant_name, description, file if file else path.basename(f.__globals__['__file__']))
+        basename = file if file else path.basename(f.__globals__['__file__'])
+        if basename not in g_mutant_registry:
+            g_mutant_registry[basename]=  {}
+            
+        if mutant_name not in g_mutant_registry[basename]:
+            g_mutant_registry[basename][mutant_name] = Mutant(mutant_name, description, basename)
         return f
 
     return decorator
