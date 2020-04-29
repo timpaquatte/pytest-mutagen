@@ -3,17 +3,19 @@ from setuptools import setup, find_packages
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
+SOURCE = 'src'
 
 setup(
     name="pytest-mutagen",
-    version="1.0.1",
+    version="1.0.2",
     author="Timothee Paquatte <timothee.paquatte@polytechnique.edu>, Harrison Goldstein <hgo@seas.upenn.edu>",
     author_email="hgo@seas.upenn.edu",
     description="Add the mutation testing feature to pytest",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/hgoldstein95/pytest-mutagen",
-    packages=find_packages(),
+    packages=find_packages(SOURCE),
+    package_dir={"": SOURCE},
     license="MIT",
     classifiers=[
         "Programming Language :: Python :: 3",
