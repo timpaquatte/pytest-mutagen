@@ -14,19 +14,11 @@ generate a certain kind of input. Mutation testing can be used to find those gap
 
 
 # Installation
-* Clone this repository
-* Find the folder on your system that contains python libraries :
-	```
-	python3 -c "import sys; print(sys.path)"
-	```
-* Create in this folder a symbolic link to the pytest-mutagen repository previously cloned :
-	```
-	ln -s /path/to/pytest-mutagen pytest_mutagen
-	```
-* Install it with pip
-	```
-	python3 -m pip install -e /path/to/symbolic/link/pytest_mutagen
-	```
+
+```
+python3 -m pip install pytest-mutagen
+```
+
 # Usage
 ## Python import
 `import pytest_mutagen as mg`

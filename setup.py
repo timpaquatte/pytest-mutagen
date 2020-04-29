@@ -6,7 +6,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="pytest-mutagen",
-    version="1.0",
+    version="1.0.1",
     author="Timothee Paquatte <timothee.paquatte@polytechnique.edu>, Harrison Goldstein <hgo@seas.upenn.edu>",
     author_email="hgo@seas.upenn.edu",
     description="Add the mutation testing feature to pytest",
@@ -26,7 +26,7 @@ setup(
         'Topic :: Software Development :: Testing',
         'Intended Audience :: Developers',
     ],
-    entry_points={"pytest11": ["mutagen = plugin", ]},
+    entry_points={"pytest11": ["mutagen = pytest_mutagen.plugin", ]},
     python_requires='>=3.6',
     install_requires=['pytest>=5.4', ],
     keywords="python testing property-based-testing",
