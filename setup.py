@@ -7,7 +7,7 @@ SOURCE = 'src'
 
 setup(
     name="pytest-mutagen",
-    version="1.0.3",
+    version="1.0.4",
     author="Timothee Paquatte <timothee.paquatte@polytechnique.edu>, Harrison Goldstein <hgo@seas.upenn.edu>",
     author_email="hgo@seas.upenn.edu",
     description="Add the mutation testing feature to pytest",

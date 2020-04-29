@@ -1,4 +1,4 @@
-from mutagen import *
+from pytest_mutagen.mutagen import *
 from _pytest.reports import TestReport
 from _pytest.runner import runtestprotocol
 from _pytest.config import ExitCode
