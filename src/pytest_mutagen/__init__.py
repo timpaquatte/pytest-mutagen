@@ -1,1 +1,1 @@
-from plugin import *
+from pytest_mutagen.plugin import *
