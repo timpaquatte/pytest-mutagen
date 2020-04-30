@@ -1,18 +1,19 @@
 from os import path
 
+
+APPLY_TO_ALL = "**all**"
+
 # Global list of all mutants
-g_mutant_registry = {}
+g_mutant_registry = {APPLY_TO_ALL:{}}
 
 # Current mutant (set by Mutant::apply_and_run)
 g_current_mutant = None
 
-
 class Mutant(object):
-    def __init__(self, name, description, file):
+    def __init__(self, name, description):
         self.function_mappings = {}
         self.name = name
         self.description = description
-        self.file = file
 
     def add_mapping(self, fname, fimpl):
         self.function_mappings[fname] = fimpl
@@ -49,30 +50,40 @@ def mut(mutation, good, bad):
         return good()
 
 
-def mutant_of(fname, mutant_name, description=""):
+def mutant_of(fname, mutant_name, file=None, description=""):
+
     def decorator(f):
-        global g_mutant_registry
-        basename = path.basename(f.__globals__['__file__'])
+        basename = file if not file is None else path.basename(f.__globals__['__file__'])
+        has_mutant(mutant_name, basename, "")(f)
 
-        if basename not in g_mutant_registry:
-            g_mutant_registry[basename] = {}
-
-        if mutant_name not in g_mutant_registry[basename]:
-            g_mutant_registry[basename][mutant_name] = Mutant(mutant_name, description, basename)
-        g_mutant_registry[basename][mutant_name].add_mapping(fname, f)
+        if isinstance(basename, str):
+            g_mutant_registry[basename][mutant_name].add_mapping(fname, f)
+        else:
+            for b in basename:
+                g_mutant_registry[b][mutant_name].add_mapping(fname, f)
 
         return f
 
     return decorator
 
 def has_mutant(mutant_name, file=None, description=""):
+
     def decorator(f):
-        basename = file if file else path.basename(f.__globals__['__file__'])
-        if basename not in g_mutant_registry:
-            g_mutant_registry[basename]=  {}
-            
-        if mutant_name not in g_mutant_registry[basename]:
-            g_mutant_registry[basename][mutant_name] = Mutant(mutant_name, description, basename)
+        if file is None:
+            files = [APPLY_TO_ALL]
+        elif isinstance(file, str):
+            files = [file]
+        elif isinstance(file, list):
+            files = file
+        else:
+            raise ValueError("file must be a string or a list of strings")
+
+        for basename in files:
+            if basename not in g_mutant_registry:
+                g_mutant_registry[basename]=  {}
+
+            if mutant_name not in g_mutant_registry[basename]:
+                g_mutant_registry[basename][mutant_name] = Mutant(mutant_name, description)
         return f
 
     return decorator

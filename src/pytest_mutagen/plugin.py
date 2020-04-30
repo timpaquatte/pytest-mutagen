@@ -41,7 +41,7 @@ def pytest_report_teststatus(report, config):
 
 def pytest_runtest_makereport(item, call):
     report = TestReport.from_item_and_call(item, call)
-    if g_current_mutant and report.when == "call":
+    if g_current_mutant and report.when == "call" and report.outcome in ["failed", "passed"]:
         report.outcome = "mut" + report.outcome
     return report
 
@@ -64,10 +64,60 @@ def write_in_cache(module_name, session, item, mutant_name):
     new_val = get_func_from_item(item).__qualname__
     session.config.cache.set("mutagen/" + module_name + "/" + mutant_name, ([] if l is None else l) + [new_val])
 
+def get_stacked_collection(session):
+    items = session.items
+
+    # Syntax from by _pytest.terminal.TerminalReporter._printcollecteditems
+    stack = []
+    collected = []
+    collectors = []
+    function_list = []
+    for item in items:
+        needed_collectors = item.listchain()[1:]  # strip root node
+        while stack:
+            if stack == needed_collectors[: len(stack)]:
+                break
+            stack.pop()
+        if len(stack) == len(needed_collectors) - 1:
+            function_list.append(needed_collectors[-1])
+        else:
+            collected.append(collectors + [function_list])
+            collectors = []
+            for col in needed_collectors[len(stack) :]:
+                stack.append(col)
+                if col.name == "()":  # Skip Instances.
+                    continue
+                collectors.append(col)
+            function_list = [collectors.pop()]
+    collected.append(collectors + [function_list])
+    collected.pop(0)
+    return collected
+
+def display_header(reporter, item):
+    reporter._tw.line()
+
+    from _pytest.python import Module, Package
+
+    if isinstance(item, Package):
+        reporter.write_sep("-", "Package " + path.basename(item.name) + ":", bold=False)
+    elif isinstance(item, Module):
+        reporter.write_line("Module " + path.basename(item.name) + ":")
+    else:
+        reporter.write_line("Not recognized " + ":")
+
+def get_mutants_per_module(module_name):
+    global g_mutant_registry
+    global APPLY_TO_ALL
+
+    mutants = list(g_mutant_registry[APPLY_TO_ALL].values())
+
+    if module_name in g_mutant_registry:
+        mutants += list(g_mutant_registry[module_name].values())
+
+    return mutants
 
 @pytest.hookimpl(trylast=True)
 def pytest_sessionfinish(session, exitstatus):
-    global g_mutant_registry
     global g_current_mutant
     global all_test_passed
     global failed_mutants
@@ -80,18 +130,22 @@ def pytest_sessionfinish(session, exitstatus):
     reporter.write_sep("=", "mutation session starts", bold=True)
     reporter.showfspath = False
 
-    for module in session.collect():
-        basename = path.basename(module.name)
-        collection = module.collect()
+    collected = get_stacked_collection(session)
 
-        if not isinstance(collection, list):
-            continue
+    for stacked in collected:
+        for i in range(len(stacked) - 1):
+            display_header(reporter, stacked[i])
+
+        basename = path.basename(stacked[-2].name) if len(stacked) > 1 else ""
+        collection = stacked[-1]
 
         failed_mutants[basename] = []
-        reporter._tw.line()
-        reporter.write_line("Module " + basename + ":")
+        mutants = get_mutants_per_module(basename)
 
-        for mutant in filter(lambda x: x.file == basename, g_mutant_registry[basename].values()):
+        if len(mutants) == 0:
+            reporter.write_line("No mutant registered", **{"purple": True})
+
+        for mutant in mutants:
             g_current_mutant = mutant
             all_test_passed = True
 
