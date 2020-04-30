@@ -25,8 +25,7 @@ python3 -m pip install pytest-mutagen
 
 ## Declare a mutant
 * **Mutant function** \
-	If you want to run the tests from testfile.py with some mutations, you can either write the mutations in testfile.py or in a new file by using `from testfile import *`. If the mutations affect an object (function or class) you have to be sure that this object exists in the `__globals__` symbols table of either the test functions or the mutated functions. For this purpose you can simply write `from [your_module] import [target_object]` in the test file or in the mutation file.
-	To mutate a whole function you have to write the new version of the function, decorated with `@mg.mutant_of(function_qual_name, mutant_name, description (optional))`.
+	To mutate a whole function you have to write the new version of the function, decorated with `@mg.mutant_of(function_qual_name, mutant_name, file (optional), description (optional))`. If the mutations affect an object (function or class) you have to be sure that this object exists in the `__globals__` symbols table of either the test functions or the mutated functions. For this purpose you can simply write `from [your_module] import [target_object]` in the test file or in the mutation file.
 	Example :
 
 	```python
@@ -39,16 +38,15 @@ python3 -m pip install pytest-mutagen
 	```
 
 * **Mutant expression** \
-	If you don't want to change the whole function but only one line, you must decorate the function with `@mg.has_mutant(mutant_name, filename (optional), description (optional))` where filename is the name of the mutation file. If you don't specify a filename it will be set to the file where `has_mutant` is written. Then you have two ways to do it :
+	If you don't want to change the whole function but only one line, you must decorate the function with `@mg.has_mutant(mutant_name, file (optional), description (optional))`. Then you have two ways to do it :
 
-  * By replacing the expression by the `mg.mut(mutant_name, normal_expression, mutant_expression)` function, using lambda expressions.
+  * By replacing the expression by the `mg.mut(mutant_name, normal_expression, mutant_expression)` function, using lambda expressions. \
 			Example :
 			`mg.mut("FLIP_LT", lambda: a < b, lambda: b < a)`
 
-  * Using the `mg.not_mutant(mutant_name)` function combined with an `if` statement.
+  * Using the `mg.not_mutant(mutant_name)` function combined with an `if` statement. \
 			Example :
 			`k = inc(k) if mg.not_mutant("INC_OBO2") else inc(k) + 1`
-  If you want to mutate several expressions in the same function you have to use one decorator per mutation.
 
 ### Mutating a class method
 
@@ -72,8 +70,19 @@ def static_bar_mut():
 	pass
 ```
 
+## Global functioning
+
+Mutagen collects all declared mutants, stored per file names. Then it looks through all tests collected by pytest and apply the mutants to the matching files. This is handled by the optional file parameter in `@has_mutant` and `@mutant_of` which can be a file name or a list of file names where you want your mutant to be applied. You can set it to APPLY_TO_ALL (constant string declared in mutagen) if you want it to be applied to all collected files. By default, file is :
+* APPLY_TO_ALL for `@has_mutant`
+* the current file name for `@mutant_of` (the one where it is written)
+
+Therefore you can either :
+* write your mutations and specify for each one where you want it to be applied
+* or create a mutations.py file where you import all test files you want (`from testfile.py import *`), write your `mutant_of` with no file specified and run pytest on mutation.py.
+
 ## Run the tests
-`python3 -m pytest --mutate file_with_mutations.py`
+
+`python3 -m pytest --mutate`
 
 > The `--quick-mut` option will stop each mutant after its first failed test. If not specified each mutant will run the whole test suite
 
