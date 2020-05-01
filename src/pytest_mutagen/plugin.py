@@ -176,6 +176,9 @@ def pytest_sessionfinish(session, exitstatus):
                 reporter.write_line("\t" + mutant.name)
 
 def pytest_terminal_summary(terminalreporter):
+    if not terminalreporter.config.getoption(MUTAGEN_OPTION):
+        return
+
     terminalreporter.section("Mutagen")
 
     for module in failed_mutants:
