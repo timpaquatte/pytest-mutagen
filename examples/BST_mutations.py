@@ -1,7 +1,7 @@
 from hypothesis import given, strategies as st, control
 import sys
 import random as rd
-import mutagen as mg
+import pytest_mutagen as mg
 
 ######################################
 #  DEFINITION AND OPERATIONS OF BST  #
@@ -94,7 +94,7 @@ def find(x, t):
         return find(x, t.right)
 
 
-@mg.has_mutant("INSERT_NOUPDATE")
+@mg.has_mutant("INSERT_NOUPDATE", file="BST_mutations.py")
 def insert(x, t):
     if t is None or isLeaf(t):
         return BST(x, BST(), BST())
@@ -110,7 +110,7 @@ def insert(x, t):
         return BST(t.data, t.left, insert(x, t.right))
 
 
-@mg.has_mutant("DELETE_REMAINDER")
+@mg.has_mutant("DELETE_REMAINDER", file="BST_mutations.py")
 def delete(x, t):
     if t is None or isLeaf(t):
         return t

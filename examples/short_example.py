@@ -1,16 +1,16 @@
 from hypothesis import given, strategies as st
-import mutagen as mg
+import pytest_mutagen as mg
 
 
 def inc(x):
     return x + 1
 
 
-@mg.has_mutant("FLIP_LT", description="Change < to >.")
-@mg.has_mutant("SKIP_BLOCK", description="Skip a critical block.")
-@mg.has_mutant("DUP_LEFT", description="Merge left with left, not right.")
-@mg.has_mutant("INC_OBO2")
-@mg.has_mutant("NO_MUTATION")
+@mg.has_mutant("FLIP_LT", file="short_example.py", description="Change < to >.")
+@mg.has_mutant("SKIP_BLOCK", file="short_example.py", description="Skip a critical block.")
+@mg.has_mutant("DUP_LEFT", file="short_example.py", description="Merge left with left, not right.")
+@mg.has_mutant("INC_OBO2", file="short_example.py")
+@mg.has_mutant("NO_MUTATION", file="short_example.py")
 def merge_sort(arr):
     if len(arr) > 1:
         mid = len(arr) // 2

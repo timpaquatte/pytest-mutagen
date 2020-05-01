@@ -95,5 +95,10 @@ Mutagen stores in the pytest cache the functions that failed during the last run
 If you don't want to run the original test suite but only the mutations you can use the pytest option `--collect-only`
 
 ## Examples
+You can find some examples in the examples folder
 * The file short_example.py is a very simple example of the use of mutagen to test a merge sort function
 * The file BST_mutations.py implements the Binary Search Tree data structure, and the test suite and mutations from _How to specify it!_ (John Hughes, 2019)
+* The subfolder separate_files is an example of the separation between the source file, the test file and the mutation file
+
+
+The run-tests.py scripts show how to run these tests
