@@ -1,2 +1,5 @@
-__pycache__
 .hypothesis
+__pycache__
+pytest_mutagen.egg-info
+build
+dist

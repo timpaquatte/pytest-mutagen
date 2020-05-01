@@ -3,7 +3,7 @@ from _pytest.reports import TestReport
 from _pytest.runner import runtestprotocol
 from _pytest.config import ExitCode
 from _pytest.terminal import TerminalReporter
-import sys
+from os import path
 
 import pytest
 
@@ -93,7 +93,18 @@ def get_stacked_collection(session):
     collected.pop(0)
     return collected
 
-def display_header(reporter, item):
+def get_mutants_per_module(module_name):
+    global g_mutant_registry
+    global APPLY_TO_ALL
+
+    mutants = list(g_mutant_registry[APPLY_TO_ALL].values())
+
+    if module_name in g_mutant_registry:
+        mutants += list(g_mutant_registry[module_name].values())
+
+    return mutants
+
+def display_item(reporter, item):
     reporter._tw.line()
 
     from _pytest.python import Module, Package
@@ -105,16 +116,30 @@ def display_header(reporter, item):
     else:
         reporter.write_line("Not recognized " + ":")
 
-def get_mutants_per_module(module_name):
-    global g_mutant_registry
-    global APPLY_TO_ALL
+def parse_stacked(session, stacked, carry):
+    global failed_mutants
 
-    mutants = list(g_mutant_registry[APPLY_TO_ALL].values())
+    basename = path.basename(stacked[-2].name) if len(stacked) > 1 else ""
+    collection = stacked[-1]
+    mutants = get_mutants_per_module(basename)
+    reporter = session.config.pluginmanager.get_plugin("terminalreporter")
 
-    if module_name in g_mutant_registry:
-        mutants += list(g_mutant_registry[module_name].values())
+    for k in range(min(len(carry), len(stacked) - 1)):
+        carry.pop()
+    carry.extend(stacked)
+    carry.pop()
 
-    return mutants
+    specified_in_args = basename in [path.basename(a) for a in session.config.args]
+    if len(mutants) > 0 or specified_in_args:
+        failed_mutants[basename] = []
+        for item in carry:
+            display_item(reporter, item)
+        carry = []
+
+    if len(mutants) == 0 and specified_in_args:
+        reporter.write_line("No mutant registered", **{"purple": True})
+
+    return basename, collection, mutants
 
 @pytest.hookimpl(trylast=True)
 def pytest_sessionfinish(session, exitstatus):
@@ -131,19 +156,11 @@ def pytest_sessionfinish(session, exitstatus):
     reporter.showfspath = False
 
     collected = get_stacked_collection(session)
+    carry = []
 
     for stacked in collected:
-        for i in range(len(stacked) - 1):
-            display_header(reporter, stacked[i])
 
-        basename = path.basename(stacked[-2].name) if len(stacked) > 1 else ""
-        collection = stacked[-1]
-
-        failed_mutants[basename] = []
-        mutants = get_mutants_per_module(basename)
-
-        if len(mutants) == 0:
-            reporter.write_line("No mutant registered", **{"purple": True})
+        basename, collection, mutants = parse_stacked(session, stacked, carry)
 
         for mutant in mutants:
             g_current_mutant = mutant
