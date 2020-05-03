@@ -9,6 +9,8 @@ g_mutant_registry = {APPLY_TO_ALL:{}}
 # Current mutant (set by Mutant::apply_and_run)
 g_current_mutant = None
 
+linked_files = {}
+
 class Mutant(object):
     def __init__(self, name, description):
         self.function_mappings = {}
@@ -53,7 +55,10 @@ def mut(mutation, good, bad):
 def mutant_of(fname, mutant_name, file=None, description=""):
 
     def decorator(f):
+        global linked_files
         basename = file if not file is None else path.basename(f.__globals__['__file__'])
+        if isinstance(basename, str) and basename in linked_files:
+            basename = linked_files[basename]
         has_mutant(mutant_name, basename, "")(f)
 
         if isinstance(basename, str):
@@ -87,3 +92,10 @@ def has_mutant(mutant_name, file=None, description=""):
         return f
 
     return decorator
+
+def link_to_file(filename):
+    global linked_files
+
+    import inspect
+    current_file = path.basename(inspect.stack()[1].filename)
+    linked_files[current_file] = filename
