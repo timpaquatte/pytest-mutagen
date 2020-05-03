@@ -77,7 +77,7 @@ Mutagen collects all declared mutants, stored per file names. Then it looks thro
 * the current file name for `@mutant_of` (the one where it is written)
 
 Therefore you can either :
-* write your mutations and specify for each one where you want it to be applied
+* write your mutations and specify for each one where you want it to be applied (use the function `mg.link_to_file(filename)` at the beginning of your file to link the current file to the specified filename)
 * or create a mutations.py file where you import all test files you want (`from testfile.py import *`), write your `mutant_of` with no file specified and run pytest on mutation.py.
 
 ## Run the tests
