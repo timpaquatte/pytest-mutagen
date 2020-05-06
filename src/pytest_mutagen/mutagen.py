@@ -20,18 +20,6 @@ class Mutant(object):
     def add_mapping(self, fname, fimpl):
         self.function_mappings[fname] = fimpl
 
-    def apply_and_run(self, f):
-        global g_current_mutant
-        g_current_mutant = self
-        result = True
-        try:
-            f()
-        except Exception:
-            result = False
-        g_current_mutant = None
-
-        return result
-
 
 def active_mutant(mutation):
     global g_current_mutant

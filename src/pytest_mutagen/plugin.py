@@ -1,4 +1,4 @@
-from pytest_mutagen.mutagen import *
+import pytest_mutagen.mutagen as mg
 from _pytest.reports import TestReport
 from _pytest.runner import runtestprotocol
 from _pytest.config import ExitCode
@@ -10,7 +10,6 @@ import pytest
 MUTAGEN_OPTION = "--mutate"
 QUICK_MUTATIONS = "--quick-mut"
 
-all_test_passed = True
 failed_mutants = {}
 
 def pytest_addoption(parser):
@@ -30,18 +29,16 @@ def pytest_report_header(config):
     return 'pytest-mutagen-1.0 : Mutations ' + ('enabled' if config.getoption(MUTAGEN_OPTION) else 'disabled')
 
 def pytest_report_teststatus(report, config):
-    global all_test_passed
     if report.when == "call":
         if report.outcome == "mutpassed":
             return "mut_passed", "m", ("MUT", {"purple": True})
         elif report.outcome == "mutfailed":
-            all_test_passed = False
             return "mut_failed", "M", ("MUTF", {"red": True})
 
 
 def pytest_runtest_makereport(item, call):
     report = TestReport.from_item_and_call(item, call)
-    if g_current_mutant and report.when == "call" and report.outcome in ["failed", "passed"]:
+    if mg.g_current_mutant and report.when == "call" and report.outcome in ["failed", "passed"]:
         report.outcome = "mut" + report.outcome
     return report
 
@@ -94,13 +91,10 @@ def get_stacked_collection(session):
     return collected
 
 def get_mutants_per_module(module_name):
-    global g_mutant_registry
-    global APPLY_TO_ALL
+    mutants = list(mg.g_mutant_registry[mg.APPLY_TO_ALL].values())
 
-    mutants = list(g_mutant_registry[APPLY_TO_ALL].values())
-
-    if module_name in g_mutant_registry:
-        mutants += list(g_mutant_registry[module_name].values())
+    if module_name in mg.g_mutant_registry:
+        mutants += list(mg.g_mutant_registry[module_name].values())
 
     return mutants
 
@@ -143,8 +137,6 @@ def parse_stacked(session, stacked, carry):
 
 @pytest.hookimpl(trylast=True)
 def pytest_sessionfinish(session, exitstatus):
-    global g_current_mutant
-    global all_test_passed
     global failed_mutants
 
     if not session.config.getoption(MUTAGEN_OPTION):
@@ -159,31 +151,28 @@ def pytest_sessionfinish(session, exitstatus):
     carry = []
 
     for stacked in collected:
-
         basename, collection, mutants = parse_stacked(session, stacked, carry)
 
         for mutant in mutants:
-            g_current_mutant = mutant
-            all_test_passed = True
-
             collection = check_cache_and_rearrange(basename, session, mutant.name, collection)
 
-            def f():
-                skip = False
-                for item in collection:
-                    if not skip:
-                        saved_globals = modify_environment(item, mutant)
-                        reports = runtestprotocol(item)
-                        if any(report.outcome == "mutfailed" for report in reports):
-                            write_in_cache(basename, session, item, mutant.name)
-                            if session.config.getoption(QUICK_MUTATIONS):
-                                skip = True
-                        restore_environment(item, mutant, saved_globals)
-                    else:
-                        reporter.write(" ")
+            mg.g_current_mutant = mutant
+            all_test_passed = True
+            skip = False
+            for item in collection:
+                if not skip:
+                    saved_globals = modify_environment(item, mutant)
+                    reports = runtestprotocol(item)
+                    if any(report.outcome == "mutfailed" for report in reports):
+                        write_in_cache(basename, session, item, mutant.name)
+                        all_test_passed = False
+                        if session.config.getoption(QUICK_MUTATIONS):
+                            skip = True
+                    restore_environment(item, mutant, saved_globals)
+                else:
+                    reporter.write(" ")
 
-            mutant.apply_and_run(f)
-            g_current_mutant = None
+            mg.g_current_mutant = None
 
             if all_test_passed:
                 reporter.write_line("\t" + mutant.name + "\t/!\ ALL TESTS PASSED")
@@ -211,12 +200,15 @@ def get_func_from_item(item):
         return getattr(item.function, "hypothesis").inner_test
     return item.function
 
-def get_object_to_modify(func_name, f, repl):
+def get_object_to_modify(obj_name, f, repl):
     obj_to_modify = None
-    if func_name in f.__globals__:
-        obj_to_modify = f.__globals__[func_name]
-    elif func_name in repl.__globals__:
-        obj_to_modify = repl.__globals__[func_name]
+    if obj_name in f.__globals__:
+        obj_to_modify = f.__globals__[obj_name]
+    elif obj_name in repl.__globals__:
+        obj_to_modify = repl.__globals__[obj_name]
+
+    if obj_to_modify is None:
+        raise NameError("Could not find " + obj_name + ", make sure that it's imported in the file containing mutations")
     return obj_to_modify
 
 def modify_environment(item, mutant):
@@ -228,23 +220,21 @@ def modify_environment(item, mutant):
         if not "." in func_name:
             func_to_modify = get_object_to_modify(func_name, f, repl)
 
-            if not func_to_modify is None:
-                saved[func_name] = func_to_modify.__globals__[func_name].__code__
-                func_to_modify.__globals__[func_name].__code__ = repl.__code__
+            saved[func_name] = func_to_modify.__globals__[func_name].__code__
+            func_to_modify.__globals__[func_name].__code__ = repl.__code__
         else:
             l = func_name.split(".", 1)
             class_to_modify = get_object_to_modify(l[0], f, repl)
 
-            if not class_to_modify is None:
-                saved[func_name] = class_to_modify.__dict__[l[1]]
+            saved[func_name] = class_to_modify.__dict__[l[1]]
 
-                if isinstance(saved[func_name], staticmethod):
-                    setattr(class_to_modify, l[1], staticmethod(repl))
-                elif isinstance(saved[func_name], property):
-                    new_prop = property(fget=repl, fset=saved[func_name].fset, fdel=saved[func_name].fdel)
-                    setattr(class_to_modify, l[1], new_prop)
-                else:
-                    setattr(class_to_modify, l[1], repl)
+            if isinstance(saved[func_name], staticmethod):
+                setattr(class_to_modify, l[1], staticmethod(repl))
+            elif isinstance(saved[func_name], property):
+                new_prop = property(fget=repl, fset=saved[func_name].fset, fdel=saved[func_name].fdel)
+                setattr(class_to_modify, l[1], new_prop)
+            else:
+                setattr(class_to_modify, l[1], repl)
 
     return saved
 
