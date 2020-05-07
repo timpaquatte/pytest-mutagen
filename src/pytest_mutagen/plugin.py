@@ -215,6 +215,8 @@ def pytest_terminal_summary(terminalreporter):
             terminalreporter.write_line(name + ": All mutants made at least one test fail")
 
 def get_func_from_item(item):
+    if not hasattr(item, "function"):
+        return None
     if hasattr(item.function, "is_hypothesis_test") and getattr(item.function, "is_hypothesis_test"):
         return getattr(item.function, "hypothesis").inner_test
     return item.function
@@ -232,10 +234,12 @@ def get_object_to_modify(obj_name, f, repl):
 
 def modify_environment(item, mutant):
     saved = {}
+    f = get_func_from_item(item)
+
+    if f is None:
+        return []
 
     for func_name, repl in mutant.function_mappings.items():
-        f = get_func_from_item(item)
-
         if not "." in func_name:
             func_to_modify = get_object_to_modify(func_name, f, repl)
 
@@ -258,10 +262,7 @@ def modify_environment(item, mutant):
     return saved
 
 def restore_environment(item, mutant, saved):
-    if hasattr(item.function, "is_hypothesis_test") and getattr(item.function, "is_hypothesis_test"):
-        f = getattr(item.function, "hypothesis").inner_test
-    else:
-        f = item.function
+    f = get_func_from_item(item)
 
     for func_name in saved:
         if not "." in func_name:
