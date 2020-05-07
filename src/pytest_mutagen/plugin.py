@@ -29,16 +29,15 @@ def pytest_report_header(config):
     return 'pytest-mutagen-1.0 : Mutations ' + ('enabled' if config.getoption(MUTAGEN_OPTION) else 'disabled')
 
 def pytest_report_teststatus(report, config):
-    if report.when == "call":
-        if report.outcome == "mutpassed":
-            return "mut_passed", "m", ("MUT", {"purple": True})
-        elif report.outcome == "mutfailed":
-            return "mut_failed", "M", ("MUTF", {"red": True})
+    if report.outcome == "mutpassed":
+        return "mut_passed", "m", ("MUT", {"purple": True})
+    elif report.outcome == "mutfailed":
+        return "mut_failed", "M", ("MUTF", {"red": True})
 
-
+@pytest.hookimpl(tryfirst=True)
 def pytest_runtest_makereport(item, call):
     report = TestReport.from_item_and_call(item, call)
-    if mg.g_current_mutant and report.when == "call" and report.outcome in ["failed", "passed"]:
+    if (not mg.g_current_mutant is None) and report.when == "call" and report.outcome in ["failed", "passed"]:
         report.outcome = "mut" + report.outcome
     return report
 
@@ -147,6 +146,9 @@ def pytest_sessionfinish(session, exitstatus):
     reporter.write_sep("=", "mutation session starts", bold=True)
     reporter.showfspath = False
 
+    if len(reporter.getreports("error")) > 0 or len(reporter.getreports("failed")) > 0:
+        return
+
     collected = get_stacked_collection(session)
     carry = []
 
@@ -163,7 +165,7 @@ def pytest_sessionfinish(session, exitstatus):
                 if not skip:
                     saved_globals = modify_environment(item, mutant)
                     reports = runtestprotocol(item)
-                    if any(report.outcome == "mutfailed" for report in reports):
+                    if any(("failed" in report.outcome) for report in reports):
                         write_in_cache(basename, session, item, mutant.name)
                         all_test_passed = False
                         if session.config.getoption(QUICK_MUTATIONS):
@@ -181,11 +183,17 @@ def pytest_sessionfinish(session, exitstatus):
             else:
                 reporter.write_line("\t" + mutant.name)
 
+    reporter.stats["error"] = []
+    reporter.stats["failed"] = []
+
 def pytest_terminal_summary(terminalreporter):
     if not terminalreporter.config.getoption(MUTAGEN_OPTION):
         return
 
     terminalreporter.section("Mutagen")
+
+    if len(terminalreporter.getreports("error")) > 0 or len(terminalreporter.getreports("failed")) > 0:
+        terminalreporter.write_line("Mutants were not run because the test suite failed", **{"red": True})
 
     for module in failed_mutants:
         if failed_mutants[module] != []:
