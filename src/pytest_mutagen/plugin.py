@@ -190,18 +190,29 @@ def pytest_terminal_summary(terminalreporter):
     if not terminalreporter.config.getoption(MUTAGEN_OPTION):
         return
 
-    terminalreporter.section("Mutagen")
-
     if len(terminalreporter.getreports("error")) > 0 or len(terminalreporter.getreports("failed")) > 0:
         terminalreporter.write_line("Mutants were not run because the test suite failed", **{"red": True})
+        return
 
-    for module in failed_mutants:
-        if failed_mutants[module] != []:
+    terminalreporter.section("Mutagen")
+
+    for module, mutants in mg.g_mutant_registry.items():
+        failed = failed_mutants.get(module, [])
+        name = module
+
+        if module == mg.APPLY_TO_ALL:
+            if len(mutants) == 0:
+                continue
+            have_failed_somewhere = set(sum(failed_mutants.values(), []))
+            failed = list(set(mutants) - have_failed_somewhere)
+            name = "Global"
+
+        if failed != []:
             terminalreporter.write("[ERROR]   ", **{"red": True})
-            terminalreporter.write_line(module + ": The following mutants passed all tests: " + str(failed_mutants[module]))
+            terminalreporter.write_line(name + ": The following mutants passed all tests: " + str(failed))
         else:
             terminalreporter.write("[SUCCESS] ", **{"green": True})
-            terminalreporter.write_line(module + ": All mutants made at least one test fail")
+            terminalreporter.write_line(name + ": All mutants made at least one test fail")
 
 def get_func_from_item(item):
     if hasattr(item.function, "is_hypothesis_test") and getattr(item.function, "is_hypothesis_test"):
