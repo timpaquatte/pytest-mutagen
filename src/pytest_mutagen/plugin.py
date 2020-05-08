@@ -60,6 +60,16 @@ def write_in_cache(module_name, session, item, mutant_name):
     new_val = get_func_from_item(item).__qualname__
     session.config.cache.set("mutagen/" + module_name + "/" + mutant_name, ([] if l is None else l) + [new_val])
 
+def remove_classes(l):
+    from _pytest.python import Class, Instance
+
+    i = 0
+    while i < len(l):
+        if isinstance(l[i], Class) or isinstance(l[i], Instance):
+            del l[i]
+        else:
+            i += 1
+
 def get_stacked_collection(session):
     items = session.items
 
@@ -70,6 +80,7 @@ def get_stacked_collection(session):
     function_list = []
     for item in items:
         needed_collectors = item.listchain()[1:]  # strip root node
+        remove_classes(needed_collectors)
         while stack:
             if stack == needed_collectors[: len(stack)]:
                 break
@@ -81,8 +92,6 @@ def get_stacked_collection(session):
             collectors = []
             for col in needed_collectors[len(stack) :]:
                 stack.append(col)
-                if col.name == "()":  # Skip Instances.
-                    continue
                 collectors.append(col)
             function_list = [collectors.pop()]
     collected.append(collectors + [function_list])
@@ -98,10 +107,9 @@ def get_mutants_per_module(module_name):
     return mutants
 
 def display_item(reporter, item):
-    reporter._tw.line()
-
     from _pytest.python import Module, Package
 
+    reporter._tw.line()
     if isinstance(item, Package):
         reporter.write_sep("-", "Package " + path.basename(item.name) + ":", bold=False)
     elif isinstance(item, Module):
