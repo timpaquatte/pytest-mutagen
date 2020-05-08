@@ -10,7 +10,7 @@ import pytest
 MUTAGEN_OPTION = "--mutate"
 QUICK_MUTATIONS = "--quick-mut"
 
-failed_mutants = {}
+mutants_passed_all_tests = {}
 
 def pytest_addoption(parser):
     group = parser.getgroup("mutagen", "Mutagen")
@@ -110,7 +110,7 @@ def display_item(reporter, item):
         reporter.write_line("Not recognized " + ":")
 
 def parse_stacked(session, stacked, carry):
-    global failed_mutants
+    global mutants_passed_all_tests
 
     basename = path.basename(stacked[-2].name) if len(stacked) > 1 else ""
     collection = stacked[-1]
@@ -124,7 +124,7 @@ def parse_stacked(session, stacked, carry):
 
     specified_in_args = basename in [path.basename(a) for a in session.config.args]
     if len(mutants) > 0 or specified_in_args:
-        failed_mutants[basename] = []
+        mutants_passed_all_tests[basename] = []
         for item in carry:
             display_item(reporter, item)
         carry = []
@@ -136,7 +136,7 @@ def parse_stacked(session, stacked, carry):
 
 @pytest.hookimpl(trylast=True)
 def pytest_sessionfinish(session, exitstatus):
-    global failed_mutants
+    global mutants_passed_all_tests
 
     if not session.config.getoption(MUTAGEN_OPTION):
         return
@@ -178,7 +178,7 @@ def pytest_sessionfinish(session, exitstatus):
 
             if all_test_passed:
                 reporter.write_line("\t" + mutant.name + "\t/!\ ALL TESTS PASSED")
-                failed_mutants[basename].append(mutant.name)
+                mutants_passed_all_tests[basename].append(mutant.name)
                 session.exitstatus = ExitCode.TESTS_FAILED
             else:
                 reporter.write_line("\t" + mutant.name)
@@ -187,6 +187,8 @@ def pytest_sessionfinish(session, exitstatus):
     reporter.stats["failed"] = []
 
 def pytest_terminal_summary(terminalreporter):
+    global mutants_passed_all_tests
+
     if not terminalreporter.config.getoption(MUTAGEN_OPTION):
         return
 
@@ -197,19 +199,21 @@ def pytest_terminal_summary(terminalreporter):
     terminalreporter.section("Mutagen")
 
     for module, mutants in mg.g_mutant_registry.items():
-        failed = failed_mutants.get(module, [])
+        passed_all = mutants_passed_all_tests.get(module, [])
         name = module
 
         if module == mg.APPLY_TO_ALL:
             if len(mutants) == 0:
                 continue
-            have_failed_somewhere = set(sum(failed_mutants.values(), []))
-            failed = list(set(mutants) - have_failed_somewhere)
+            passed_all = set(mutants)
+            for v in mutants_passed_all_tests.values():
+                passed_all &= set(v)
+            passed_all = list(passed_all)
             name = "Global"
 
-        if failed != []:
+        if passed_all != []:
             terminalreporter.write("[ERROR]   ", **{"red": True})
-            terminalreporter.write_line(name + ": The following mutants passed all tests: " + str(failed))
+            terminalreporter.write_line(name + ": The following mutants passed all tests: " + str(passed_all))
         else:
             terminalreporter.write("[SUCCESS] ", **{"green": True})
             terminalreporter.write_line(name + ": All mutants made at least one test fail")
