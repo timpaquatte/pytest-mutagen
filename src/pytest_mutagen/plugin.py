@@ -278,13 +278,9 @@ def restore_environment(item, mutant, saved):
 
     for func_name in saved:
         if not "." in func_name:
-            if func_name in f.__globals__:
-                f.__globals__[func_name].__code__ = saved[func_name]
-            else:
-                mutant.function_mappings[func_name].__globals__[func_name].__code__ = saved[func_name]
+            func_to_modify = get_object_to_modify(func_name, f, mutant.function_mappings[func_name])
+            func_to_modify.__globals__[func_name].__code__ = saved[func_name]
         else:
             l = func_name.split(".", 1)
-            if l[0] in f.__globals__:
-                setattr(f.__globals__[l[0]], l[1], saved[func_name])
-            else:
-                setattr(mutant.function_mappings[func_name].__globals__[l[0]], l[1], saved[func_name])
+            class_to_modify = get_object_to_modify(l[0], f, mutant.function_mappings[func_name])
+            setattr(class_to_modify, l[1], saved[func_name])
