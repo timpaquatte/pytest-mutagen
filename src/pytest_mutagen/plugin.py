@@ -243,8 +243,10 @@ def get_object_to_modify(obj_name, f, repl):
     obj_to_modify = None
     if obj_name in f.__globals__:
         obj_to_modify = f.__globals__[obj_name]
-    elif obj_name in repl.__globals__:
+    elif hasattr(repl, "__globals__") and obj_name in repl.__globals__:
         obj_to_modify = repl.__globals__[obj_name]
+    elif isinstance(repl, property) and obj_name in repl.fget.__globals__:
+        obj_to_modify = repl.fget.__globals__[obj_name]
 
     if obj_to_modify is None:
         raise NameError("Could not find " + obj_name + ", make sure that it's imported in the file containing mutations")
@@ -272,7 +274,10 @@ def modify_environment(item, mutant):
             if isinstance(saved[func_name], staticmethod):
                 setattr(class_to_modify, l[1], staticmethod(repl))
             elif isinstance(saved[func_name], property):
-                new_prop = property(fget=repl, fset=saved[func_name].fset, fdel=saved[func_name].fdel)
+                if isinstance(repl, property):
+                    new_prop = repl
+                else:
+                    new_prop = property(fget=repl, fset=saved[func_name].fset, fdel=saved[func_name].fdel)
                 setattr(class_to_modify, l[1], new_prop)
             else:
                 setattr(class_to_modify, l[1], repl)
