@@ -1,4 +1,5 @@
 from os import path
+import inspect
 
 
 APPLY_TO_ALL = "**all**"
@@ -44,7 +45,7 @@ def mutant_of(fname, mutant_name, file=None, description=""):
 
     def decorator(f):
         global linked_files
-        basename = file if not file is None else path.basename(f.__globals__['__file__'])
+        basename = file if not file is None else path.basename(inspect.stack()[1].filename)
         if isinstance(basename, str) and basename in linked_files:
             basename = linked_files[basename]
         has_mutant(mutant_name, basename, "")(f)
@@ -84,6 +85,5 @@ def has_mutant(mutant_name, file=None, description=""):
 def link_to_file(filename):
     global linked_files
 
-    import inspect
     current_file = path.basename(inspect.stack()[1].filename)
     linked_files[current_file] = filename
