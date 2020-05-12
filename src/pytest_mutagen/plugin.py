@@ -4,6 +4,7 @@ from _pytest.runner import runtestprotocol
 from _pytest.config import ExitCode
 from _pytest.terminal import TerminalReporter
 from os import path
+import sys
 
 import pytest
 
@@ -159,12 +160,17 @@ def pytest_sessionfinish(session, exitstatus):
 
     collected = get_stacked_collection(session)
     carry = []
+    initial_modules = set(sys.modules.keys()).copy()
 
     for stacked in collected:
         basename, collection, mutants = parse_stacked(session, stacked, carry)
 
         for mutant in mutants:
             collection = check_cache_and_rearrange(basename, session, mutant.name, collection)
+
+            new_modules = set(sys.modules.keys()) - initial_modules
+            for m in new_modules:
+                del sys.modules[m]
 
             mg.g_current_mutant = mutant
             all_test_passed = True
