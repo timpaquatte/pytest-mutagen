@@ -10,6 +10,7 @@ import pytest
 
 MUTAGEN_OPTION = "--mutate"
 QUICK_MUTATIONS = "--quick-mut"
+SELECT_MUTANTS = "--select"
 
 mutants_passed_all_tests = {}
 
@@ -24,6 +25,13 @@ def pytest_addoption(parser):
         QUICK_MUTATIONS,
         action="store_true",
         help="each mutant stops after the first failed test"
+    )
+    group.addoption(
+        SELECT_MUTANTS,
+        action="store",
+        type="string",
+        dest="MUTANTS",
+        help="select the mutants to run (comma-separated for several values)"
     )
 
 def pytest_report_header(config):
@@ -149,6 +157,12 @@ def pytest_sessionfinish(session, exitstatus):
 
     if not session.config.getoption(MUTAGEN_OPTION):
         return
+
+    if session.config.getoption(SELECT_MUTANTS):
+        for module, mutants in mg.g_mutant_registry.items():
+            for name in list(mutants.keys()):
+                if not name in session.config.getoption(SELECT_MUTANTS).split(","):
+                    del mg.g_mutant_registry[module][name]
 
     reporter = session.config.pluginmanager.get_plugin("terminalreporter")
     reporter._tw.line()
