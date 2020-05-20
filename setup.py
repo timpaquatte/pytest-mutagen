@@ -1,5 +1,5 @@
 from setuptools import setup, find_packages
-
+from pytest_mutagen import plugin as pl
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
@@ -7,7 +7,7 @@ SOURCE = 'src'
 
 setup(
     name="pytest-mutagen",
-    version="1.0.5",
+    version=pl.version,
     author="Timothee Paquatte <timothee.paquatte@polytechnique.edu>, Harrison Goldstein <hgo@seas.upenn.edu>",
     author_email="hgo@seas.upenn.edu",
     description="Add the mutation testing feature to pytest",
