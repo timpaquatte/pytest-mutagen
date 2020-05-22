@@ -1,13 +1,25 @@
+import os
 from setuptools import setup, find_packages
-from pytest_mutagen import plugin as pl
+
+
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
-SOURCE = 'src'
+
+def local_file(name):
+    return os.path.relpath(os.path.join(os.path.dirname(__file__), name))
+
+SOURCE = local_file("src")
+
+__version__ = None
+with open(local_file("src/pytest_mutagen/_version.py")) as o:
+    exec(o.read())
+assert __version__ is not None
+
 
 setup(
     name="pytest-mutagen",
-    version=pl.version,
+    version=__version__,
     author="Timothee Paquatte <timothee.paquatte@polytechnique.edu>, Harrison Goldstein <hgo@seas.upenn.edu>",
     author_email="hgo@seas.upenn.edu",
     description="Add the mutation testing feature to pytest",

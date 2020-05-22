@@ -14,8 +14,6 @@ SELECT_MUTANTS = "--select"
 
 mutants_passed_all_tests = {}
 
-version = "1.0.5"
-
 def pytest_addoption(parser):
     group = parser.getgroup("mutagen", "Mutagen")
     group.addoption(
@@ -37,7 +35,8 @@ def pytest_addoption(parser):
     )
 
 def pytest_report_header(config):
-    return 'pytest-mutagen-' + version + ' : Mutations ' + ('enabled' if config.getoption(MUTAGEN_OPTION) else 'disabled')
+    from ._version import __version__
+    return 'pytest-mutagen-' + __version__ + ' : Mutations ' + ('enabled' if config.getoption(MUTAGEN_OPTION) else 'disabled')
 
 def pytest_report_teststatus(report, config):
     if report.outcome == "mutpassed":
