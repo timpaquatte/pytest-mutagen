@@ -45,7 +45,7 @@ class MutationSession:
     def display_item(self, item):
         self.reporter._tw.line()
         if isinstance(item, Package):
-            self.reporter.write_sep("-", "Package " + path.basename(item.name) + ":", bold=False)
+            self.reporter.write_sep("-", "Package " + path.basename(item.name), bold=False)
         elif isinstance(item, Module):
             self.reporter.write_line("Module " + path.basename(item.name) + ":")
         else:
