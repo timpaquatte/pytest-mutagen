@@ -84,7 +84,9 @@ Therefore you can either :
 
 `python3 -m pytest --mutate`
 
-> The `--quick-mut` option will stop each mutant after its first failed test. If not specified each mutant will run the whole test suite
+### Quick run
+
+The `--quick-mut` option will stop each mutant after its first failed test. If not specified each mutant will run the whole test suite
 
 ### Cache use
 
@@ -93,6 +95,14 @@ Mutagen stores in the pytest cache the functions that failed during the last run
 ### Run only the mutations
 
 If you don't want to run the original test suite but only the mutations you can use the pytest option `--collect-only`
+
+### Selective run of mutants
+
+The `--select` option expects a comma-separated list of mutants (no spaces) and will run these ones exclusively.  
+Example :
+```sh
+python3 -m pytest --mutate --select INC_OBO,FLIP_LT
+```
 
 ## Examples
 You can find some examples in the examples folder
