@@ -87,3 +87,15 @@ def link_to_file(filename):
 
     current_file = path.basename(inspect.stack()[1].filename)
     linked_files[current_file] = filename
+
+def empty_function(*args, **kwargs):
+    pass
+
+def trivial_mutations(*args, **kwargs):
+    filename = kwargs.get("file", None)
+    object_to_mutate = kwargs.get("object", None)
+    if not object_to_mutate is None:
+        empty_function.__globals__[object_to_mutate.__name__] = object_to_mutate
+
+    for fname in args:
+        mutant_of(fname, (fname.split('.')[-1]).upper() + "_NOTHING", file=filename)(empty_function)
