@@ -1,8 +1,9 @@
-from os import path
+import os
 import sys
 
 import pytest
 from _pytest.reports import TestReport
+from _pytest.nodes import File
 
 import pytest_mutagen.mutagen as mg
 from pytest_mutagen.mutation_session import MutationSession
@@ -33,6 +34,12 @@ def pytest_addoption(parser):
         dest="MUTANTS",
         help="select the mutants to run (comma-separated for several values)"
     )
+
+def pytest_collect_file(parent, path):
+    if parent.config.getoption(MUTAGEN_OPTION):
+        if path.ext == ".py" and "mutations" in path.basename:
+            ihook = parent.session.gethookproxy(path)
+            return ihook.pytest_pycollect_makemodule(path=path, parent=parent)
 
 def pytest_report_header(config):
     from ._version import __version__
