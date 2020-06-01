@@ -40,21 +40,27 @@ def mut(mutation, good, bad):
     else:
         return good()
 
+def check_linked_files(file):
+    files = []
+    if isinstance(file, str):
+        files = [linked_files[file]] if file in linked_files else [file]
+    elif isinstance(file, list):
+        for f in file:
+            files.append(linked_files[f] if f in linked_files else f)
+    else:
+        raise ValueError("file must be a string or a list of strings")
+    return files
+
 
 def mutant_of(fname, mutant_name, file=None, description=""):
 
     def decorator(f):
-        global linked_files
-        basename = file if not file is None else path.basename(inspect.stack()[1].filename)
-        if isinstance(basename, str) and basename in linked_files:
-            basename = linked_files[basename]
-        has_mutant(mutant_name, basename, "")(f)
+        files = check_linked_files(file if not file is None else path.basename(inspect.stack()[1].filename))
 
-        if isinstance(basename, str):
-            g_mutant_registry[basename][mutant_name].add_mapping(fname, f)
-        else:
-            for b in basename:
-                g_mutant_registry[b][mutant_name].add_mapping(fname, f)
+        has_mutant(mutant_name, files, "")(f)
+
+        for filename in files:
+            g_mutant_registry[filename][mutant_name].add_mapping(fname, f)
 
         return f
 
@@ -63,14 +69,7 @@ def mutant_of(fname, mutant_name, file=None, description=""):
 def has_mutant(mutant_name, file=None, description=""):
 
     def decorator(f):
-        if file is None:
-            files = [APPLY_TO_ALL]
-        elif isinstance(file, str):
-            files = [file]
-        elif isinstance(file, list):
-            files = file
-        else:
-            raise ValueError("file must be a string or a list of strings")
+        files = check_linked_files(file if not file is None else APPLY_TO_ALL)
 
         for basename in files:
             if basename not in g_mutant_registry:
