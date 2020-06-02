@@ -29,28 +29,23 @@ def assert_mutant_registry_correct(mutant_name, file_name, with_function_mapping
         assert "f" in func_map
         assert func_map["f"] is empty_function
 
-def reset_globals():
-    mg.linked_files.clear()
-    for file, mutants in mg.g_mutant_registry.items():
-        for name, mutant in mutants.items():
-            del mutant
-    mg.g_mutant_registry = {mg.APPLY_TO_ALL:{}}
-
 ################
 # Actual tests #
 ################
 
+# Test mutant_of
+
 @given(WORD, WORD)
-def test_mutant_of_correct(mutant_name, file_name):
+def test_mutant_of_with_file(mutant_name, file_name):
     mg.mutant_of("f", mutant_name, file=file_name)(empty_function)
     assert_mutant_registry_correct(mutant_name, file_name, True)
-    reset_globals()
+    mg.reset_globals()
 
 @given(WORD)
 def test_mutant_of_no_file(mutant_name):
     mg.mutant_of("f", mutant_name)(empty_function)
     assert_mutant_registry_correct(mutant_name, os.path.basename(__file__), True)
-    reset_globals()
+    mg.reset_globals()
 
 @given(WORD, st.lists(WORD))
 def test_mutant_of_several_files(mutant_name, files):
@@ -58,14 +53,14 @@ def test_mutant_of_several_files(mutant_name, files):
 
     for file in files:
         assert_mutant_registry_correct(mutant_name, file, True)
-    reset_globals()
+    mg.reset_globals()
 
 @given(WORD, WORD)
 def test_mutant_of_linked_file(mutant_name, file_name):
     mg.link_to_file(file_name)
     mg.mutant_of("f", mutant_name)(empty_function)
     assert_mutant_registry_correct(mutant_name, file_name, True)
-    reset_globals()
+    mg.reset_globals()
 
 @given(WORD, st.lists(WORD, min_size=1), WORD)
 def test_mutant_of_several_linked_files(mutant_name, files, link_file):
@@ -79,4 +74,83 @@ def test_mutant_of_several_linked_files(mutant_name, files, link_file):
     for file in files:
         assert not file in mg.g_mutant_registry
 
-    reset_globals()
+    mg.reset_globals()
+
+@given(WORD, st.integers())
+def test_mutant_of_bad_type(name, number):
+    with pytest.raises(ValueError):
+        mg.mutant_of("f", name, file=number)(empty_function)
+
+# Test has_mutant
+
+@given(WORD, WORD)
+def test_has_mutant_with_file(mutant_name, file):
+    mg.has_mutant(mutant_name, file)(f)
+    assert_mutant_registry_correct(mutant_name, file)
+    mg.reset_globals()
+
+@given(WORD)
+def test_has_mutant_no_file(mutant_name):
+    mg.has_mutant(mutant_name)(f)
+    assert_mutant_registry_correct(mutant_name, mg.APPLY_TO_ALL)
+    mg.reset_globals()
+
+@given(WORD, st.lists(WORD))
+def test_has_mutant_several_files(mutant_name, files):
+    mg.has_mutant(mutant_name, files)(f)
+
+    for file in files:
+        assert_mutant_registry_correct(mutant_name, file)
+    mg.reset_globals()
+
+# Test trivial_mutations
+
+@given(st.lists(WORD))
+def test_trivial_mutations_list_only(func_list):
+    mg.trivial_mutations(*func_list)
+    for func in func_list:
+        assert_mutant_registry_correct(func.upper() + "_NOTHING", os.path.basename(__file__))
+    mg.reset_globals()
+
+@given(st.lists(WORD), WORD)
+def test_trivial_mutations_list_and_file(func_list, file):
+    mg.trivial_mutations(*func_list, file=file)
+    for func in func_list:
+        assert_mutant_registry_correct(func.upper() + "_NOTHING", file)
+    mg.reset_globals()
+
+@given(st.lists(WORD))
+def test_trivial_mutations_with_object(func_list):
+    class ExampleClass:
+        def __init__(self):
+            pass
+
+    mg.trivial_mutations(*list(map(lambda x: "ExampleClass." + x, func_list)), object=ExampleClass)
+    current_file = os.path.basename(__file__)
+    for func in func_list:
+        mutant_name = func.upper() + "_NOTHING"
+        assert_mutant_registry_correct(mutant_name, current_file)
+        assert mg.g_mutant_registry[current_file][mutant_name].function_mappings["ExampleClass."+func] is mg.empty_function
+        assert "ExampleClass" in mg.empty_function.__globals__
+        assert mg.empty_function.__globals__["ExampleClass"] is ExampleClass
+    mg.reset_globals()
+
+# Test active_mutant
+
+@given(WORD, WORD)
+def test_active_mutant_correct(name, other_name):
+    assume(name != other_name)
+    mg.g_current_mutant = mg.Mutant(name, "")
+    assert mg.active_mutant(name)
+    assert mg.not_mutant(other_name)
+    mg.reset_globals()
+
+# Test mut
+
+@given(WORD, WORD)
+def test_mut_correct(name, other_name):
+    assume(name != other_name)
+    mg.g_current_mutant = mg.Mutant(name, "")
+    assert mg.mut(name, lambda: False, lambda: True)
+    assert mg.mut(other_name, lambda: True, lambda: False)
+    mg.reset_globals()
