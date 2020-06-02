@@ -7,7 +7,7 @@ APPLY_TO_ALL = "**all**"
 # Global list of all mutants
 g_mutant_registry = {APPLY_TO_ALL:{}}
 
-# Current mutant (set by Mutant::apply_and_run)
+# Current mutant
 g_current_mutant = None
 
 linked_files = {}
@@ -40,7 +40,8 @@ def mut(mutation, good, bad):
     else:
         return good()
 
-def check_linked_files(file):
+def check_linked_files(file, default_value):
+    file = file if not file is None else default_value
     files = []
     if isinstance(file, str):
         files = [linked_files[file]] if file in linked_files else [file]
@@ -55,7 +56,7 @@ def check_linked_files(file):
 def mutant_of(fname, mutant_name, file=None, description=""):
 
     def decorator(f):
-        files = check_linked_files(file if not file is None else path.basename(inspect.stack()[1].filename))
+        files = check_linked_files(file, path.basename(inspect.stack()[1].filename))
 
         has_mutant(mutant_name, files, "")(f)
 
@@ -69,7 +70,7 @@ def mutant_of(fname, mutant_name, file=None, description=""):
 def has_mutant(mutant_name, file=None, description=""):
 
     def decorator(f):
-        files = check_linked_files(file if not file is None else APPLY_TO_ALL)
+        files = check_linked_files(file, APPLY_TO_ALL)
 
         for basename in files:
             if basename not in g_mutant_registry:
@@ -95,6 +96,8 @@ def trivial_mutations(*args, **kwargs):
     object_to_mutate = kwargs.get("object", None)
     if not object_to_mutate is None:
         empty_function.__globals__[object_to_mutate.__name__] = object_to_mutate
+    if filename is None:
+        filename = path.basename(inspect.stack()[1].filename)
 
     for fname in args:
         mutant_of(fname, (fname.split('.')[-1]).upper() + "_NOTHING", file=filename)(empty_function)
