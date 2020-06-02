@@ -101,3 +101,15 @@ def trivial_mutations(*args, **kwargs):
 
     for fname in args:
         mutant_of(fname, (fname.split('.')[-1]).upper() + "_NOTHING", file=filename)(empty_function)
+
+def reset_globals():
+    global g_mutant_registry
+    global linked_files
+    global g_current_mutant
+
+    linked_files.clear()
+    for file, mutants in g_mutant_registry.items():
+        for name, mutant in mutants.items():
+            del mutant
+    g_mutant_registry = {APPLY_TO_ALL:{}}
+    g_current_mutant = None
