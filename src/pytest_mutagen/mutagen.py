@@ -17,6 +17,7 @@ class Mutant(object):
         self.function_mappings = {}
         self.name = name
         self.description = description
+        self.nb_catches = 0
 
     def add_mapping(self, fname, fimpl):
         self.function_mappings[fname] = fimpl

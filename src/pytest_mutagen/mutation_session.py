@@ -116,6 +116,7 @@ class MutateModule:
                     reports = runtestprotocol(item)
                     if any(("failed" in report.outcome) for report in reports):
                         self.write_in_cache(item, mutant.name)
+                        mutant.nb_catches += 1
                         all_test_passed = False
                         if self.session.config.getoption(pl.QUICK_MUTATIONS):
                             skip = True

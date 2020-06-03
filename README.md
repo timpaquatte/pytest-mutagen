@@ -104,6 +104,10 @@ Example :
 python3 -m pytest --mutate --select INC_OBO,FLIP_LT
 ```
 
+### Mutagen stats
+
+The `--mutagen-stats` option adds a section to the terminal summary, which displays the number of tests that caught each mutant.
+
 ## Examples
 You can find some examples in the examples folder
 * The file short_example.py is a very simple example of the use of mutagen to test a merge sort function

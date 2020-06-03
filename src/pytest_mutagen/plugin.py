@@ -12,6 +12,7 @@ from pytest_mutagen.mutation_session import MutationSession
 MUTAGEN_OPTION = "--mutate"
 QUICK_MUTATIONS = "--quick-mut"
 SELECT_MUTANTS = "--select"
+MUTAGEN_STATS = "--mutagen-stats"
 
 mutants_passed_all_tests = {}
 
@@ -33,6 +34,11 @@ def pytest_addoption(parser):
         type="string",
         dest="MUTANTS",
         help="select the mutants to run (comma-separated for several values)"
+    )
+    group.addoption(
+        MUTAGEN_STATS,
+        action="store_true",
+        help="show the number of tests that caught each mutant"
     )
 
 def pytest_collect_file(parent, path):
@@ -99,3 +105,10 @@ def pytest_terminal_summary(terminalreporter):
         else:
             terminalreporter.write("[SUCCESS] ", **{"green": True})
             terminalreporter.write_line(name + ": All mutants made at least one test fail")
+
+    if terminalreporter.config.getoption(MUTAGEN_STATS):
+        terminalreporter.write_line("")
+        terminalreporter.write_line("Number of catches per mutants :", cyan=True)
+        for module, mutants in mg.g_mutant_registry.items():
+            for name, mutant in sorted(mutants.items(), key=lambda x: x[1].nb_catches):
+                terminalreporter.write_line(str(mutant.nb_catches) + " : " + name)
