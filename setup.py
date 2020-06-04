@@ -21,7 +21,7 @@ setup(
     name="pytest-mutagen",
     version=__version__,
     author="Timothee Paquatte <timothee.paquatte@polytechnique.edu>, Harrison Goldstein <hgo@seas.upenn.edu>",
-    author_email="hgo@seas.upenn.edu",
+    author_email="timothee.paquatte@polytechnique.edu",
     description="Add the mutation testing feature to pytest",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -43,5 +43,5 @@ setup(
     entry_points={"pytest11": ["mutagen = pytest_mutagen.plugin", ]},
     python_requires='>=3.6',
     install_requires=['pytest>=5.4', ],
-    keywords="python testing property-based-testing",
+    keywords="python testing mutation mutant mutagen test",
 )
