@@ -33,23 +33,13 @@ class MutationSession:
     def run_session(self):
 
         for suite in self.collected:
-            for item in suite[:-1]:
-                self.display_item(item)
+            for item in suite[:-2]:
+                display_item(self.reporter, item)
             suite[-1].run_mutations()
 
         if len(self.collected) > 0:
             self.reporter.stats["error"] = []
             self.reporter.stats["failed"] = []
-
-
-    def display_item(self, item):
-        self.reporter._tw.line()
-        if isinstance(item, Package):
-            self.reporter.write_sep("-", "Package " + path.basename(item.name), bold=False)
-        elif isinstance(item, Module):
-            self.reporter.write_line("Module " + path.basename(item.name) + ":")
-        else:
-            self.reporter.write_line("Not recognized " + ":")
 
     def get_stacked_collection(self):
         items = self.session.items
@@ -101,6 +91,14 @@ class MutateModule:
         return muts
 
     def run_mutations(self):
+        if self.session.config.getoption(pl.QUICK_MUTATIONS):
+            self.mutants = [x for x in self.mutants if x.nb_catches == 0]
+            if len(self.mutants) == 0:
+                return
+
+        self.reporter._tw.line()
+        self.reporter.write_line("Module " + self.basename + ":")
+
         if len(self.mutants) == 0:
             self.reporter.write_line("No mutant registered", **{"purple": True})
 
@@ -217,3 +215,13 @@ class MutateModule:
                 l = func_name.split(".", 1)
                 class_to_modify = MutateModule.get_object_to_modify(l[0], f, mutant.function_mappings[func_name])
                 setattr(class_to_modify, l[1], saved[func_name])
+
+
+def display_item(reporter, item):
+    reporter._tw.line()
+    if isinstance(item, Package):
+        reporter.write_sep("-", "Package " + path.basename(item.name), bold=False)
+    elif isinstance(item, Module):
+        reporter.write_line("Module " + path.basename(item.name) + ":")
+    else:
+        reporter.write_line("Not recognized " + ":")
