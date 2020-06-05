@@ -4,6 +4,8 @@
 Found 7 relevant mutants and proposed a Pull Request with new properties covering these problems
 * **flask** 
 Unveiled several problems on mutagen, and has a pretty good coverage but we still found one relevant mutant
+* **hyper-h2**
+Great coverage, but still one interesting mutant found
 
 # Abandoned
 
@@ -15,10 +17,10 @@ Based on test vectors so mutagen is irrelevant
 Lot of fails in the install and the test
 * **axelrod**
 Lot of fails in the tests and uses unittest rather than pytest
+* **mariadb-dyncol**
+The tests fail (Connection refused in PySQL)
 
 # Pending
 
-* **hyper-h2**
-*  **RubyMarshal**
+* **RubyMarshal**
 * **SegPy**
-* **mariadb-dyncol**
