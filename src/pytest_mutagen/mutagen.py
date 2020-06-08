@@ -92,16 +92,16 @@ def link_to_file(filename):
 def empty_function(*args, **kwargs):
     pass
 
-def trivial_mutations(*args, **kwargs):
-    filename = kwargs.get("file", None)
-    object_to_mutate = kwargs.get("object", None)
-    if not object_to_mutate is None:
-        empty_function.__globals__[object_to_mutate.__name__] = object_to_mutate
-    if filename is None:
-        filename = path.basename(inspect.stack()[1].filename)
-
-    for fname in args:
-        mutant_of(fname, (fname.split('.')[-1]).upper() + "_NOTHING", file=filename)(empty_function)
+def trivial_mutations(functions, obj=None, file=APPLY_TO_ALL):
+    if not isinstance(functions, list):
+        functions = [functions]
+    if not obj is None:
+        empty_function.__globals__[obj.__name__] = obj
+    for func in functions:
+        fname = (obj.__name__ + "." + func) if not obj is None else func.__name__
+        if callable(func):
+            empty_function.__globals__[fname] = func
+        mutant_of(fname, fname.upper() + "_NOTHING", file=file)(empty_function)
 
 def reset_globals():
     global g_mutant_registry

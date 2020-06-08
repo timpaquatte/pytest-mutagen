@@ -105,18 +105,18 @@ def test_has_mutant_several_files(mutant_name, files):
 
 # Test trivial_mutations
 
-@given(st.lists(WORD))
+@given(st.lists(st.functions()))
 def test_trivial_mutations_list_only(func_list):
-    mg.trivial_mutations(*func_list)
+    mg.trivial_mutations(func_list)
     for func in func_list:
-        assert_mutant_registry_correct(func.upper() + "_NOTHING", os.path.basename(__file__))
+        assert_mutant_registry_correct((func.__name__).upper() + "_NOTHING", mg.APPLY_TO_ALL)
     mg.reset_globals()
 
-@given(st.lists(WORD), WORD)
+@given(st.lists(st.functions()), WORD)
 def test_trivial_mutations_list_and_file(func_list, file):
-    mg.trivial_mutations(*func_list, file=file)
+    mg.trivial_mutations(func_list, file=file)
     for func in func_list:
-        assert_mutant_registry_correct(func.upper() + "_NOTHING", file)
+        assert_mutant_registry_correct((func.__name__).upper() + "_NOTHING", file)
     mg.reset_globals()
 
 @given(st.lists(WORD))
@@ -125,12 +125,11 @@ def test_trivial_mutations_with_object(func_list):
         def __init__(self):
             pass
 
-    mg.trivial_mutations(*list(map(lambda x: "ExampleClass." + x, func_list)), object=ExampleClass)
-    current_file = os.path.basename(__file__)
+    mg.trivial_mutations(func_list, ExampleClass)
     for func in func_list:
-        mutant_name = func.upper() + "_NOTHING"
-        assert_mutant_registry_correct(mutant_name, current_file)
-        assert mg.g_mutant_registry[current_file][mutant_name].function_mappings["ExampleClass."+func] is mg.empty_function
+        mutant_name = "EXAMPLECLASS." + func.upper() + "_NOTHING"
+        assert_mutant_registry_correct(mutant_name, mg.APPLY_TO_ALL)
+        assert mg.g_mutant_registry[mg.APPLY_TO_ALL][mutant_name].function_mappings["ExampleClass."+func] is mg.empty_function
         assert "ExampleClass" in mg.empty_function.__globals__
         assert mg.empty_function.__globals__["ExampleClass"] is ExampleClass
     mg.reset_globals()

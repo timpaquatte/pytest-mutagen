@@ -108,6 +108,52 @@ python3 -m pytest --mutate --select INC_OBO,FLIP_LT
 
 The `--mutagen-stats` option adds a section to the terminal summary, which displays the number of tests that caught each mutant.
 
+## Add trivial mutations
+
+To find holes in a test suite with mutagen, we often try trivial mutations on some functions (like 
+replacing them with pass) to see whether a lot of tests catch them or not. 
+For this purpose the `trivial_mutations(functions, obj=None, file=APPLY_TO_ALL)` function with a 
+list of functions as input adds all mutants corresponding to replacing them by an empty function.
+There are two ways to use it :
+
+```python
+from module import sort, invert, ExampleClass
+
+# With a list of top-level functions
+mg.trivial_mutations([sort, invert])
+
+# With a list of method names and the corresponding object
+mg.trivial_mutations(["sort", "clear"], ExampleClass)
+
+```
+
+This is equivalent to doing this:
+
+```python
+from module import sort, invert, ExampleClass
+
+mg.link_to_file(mg.APPLY_TO_ALL)
+
+@mg.mutant_of("sort", "SORT_NOTHING")
+def sort_mut(*args, **kwargs):
+	pass
+
+@mg.mutant_of("invert", "INVERT_NOTHING")
+def invert_mut(*args, **kwargs):
+	pass
+
+@mg.mutant_of("ExampleClass.sort", "EXAMPLECLASS.SORT_NOTHING")
+def sort_mut(*args, **kwargs):
+	pass
+
+@mg.mutant_of("ExampleClass.clear", "EXAMPLECLASS.CLEAR_NOTHING")
+def clear_mut(*args, **kwargs):
+	pass
+```
+
+`trivial_mutations` has an optional _file_ parameter to specify the test file where the mutations 
+should be applied, which is by default set to APPLY_TO_ALL.
+
 ## Examples
 You can find some examples in the examples folder
 * The file short_example.py is a very simple example of the use of mutagen to test a merge sort function
