@@ -159,9 +159,7 @@ class MutateModule:
     @staticmethod
     def get_object_to_modify(obj_name, f, repl):
         obj_to_modify = None
-        if obj_name in f.__globals__:
-            obj_to_modify = f.__globals__[obj_name]
-        elif hasattr(repl, "__globals__") and obj_name in repl.__globals__:
+        if hasattr(repl, "__globals__") and obj_name in repl.__globals__:
             obj_to_modify = repl.__globals__[obj_name]
         elif isinstance(repl, property) and obj_name in repl.fget.__globals__:
             obj_to_modify = repl.fget.__globals__[obj_name]
@@ -187,7 +185,6 @@ class MutateModule:
             else:
                 l = func_name.split(".", 1)
                 class_to_modify = MutateModule.get_object_to_modify(l[0], f, repl)
-
                 saved[func_name] = class_to_modify.__dict__[l[1]]
 
                 if isinstance(saved[func_name], staticmethod):

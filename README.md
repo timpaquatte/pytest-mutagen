@@ -25,7 +25,7 @@ python3 -m pip install pytest-mutagen
 
 ## Declare a mutant
 * **Mutant function** \
-	To mutate a whole function you have to write the new version of the function, decorated with `@mg.mutant_of(function_qual_name, mutant_name, file (optional), description (optional))`. If the mutations affect an object (function or class) you have to be sure that this object exists in the `__globals__` symbols table of either the test functions or the mutated functions. For this purpose you can simply write `from [your_module] import [target_object]` in the test file or in the mutation file.
+	To mutate a whole function you have to write the new version of the function, decorated with `@mg.mutant_of(function_qual_name, mutant_name, file (optional), description (optional))`. If the mutations affect an object (function or class) you have to be sure that this object exists in the `__globals__` symbols table of the mutant functions. For this purpose you can simply write `from [your_module] import [target_object]` in the mutation file.
 	Example :
 
 	```python

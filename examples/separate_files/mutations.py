@@ -1,5 +1,5 @@
 import pytest_mutagen as mg
-
+from src import *
 
 mg.link_to_file("test_file.py")
 
