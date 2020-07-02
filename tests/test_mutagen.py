@@ -110,6 +110,15 @@ def test_trivial_mutations_list_only(func_list):
     mg.trivial_mutations(func_list)
     for func in func_list:
         assert_mutant_registry_correct((func.__name__).upper() + "_NOTHING", mg.APPLY_TO_ALL)
+        assert func.__name__ in mg.empty_function.__globals__
+    mg.reset_globals()
+
+@given(st.functions())
+def test_trivial_mutations_function_only(func):
+    mg.trivial_mutations(func)
+    assert_mutant_registry_correct((func.__name__).upper() + "_NOTHING", mg.APPLY_TO_ALL)
+    assert func.__name__ in mg.empty_function.__globals__
+    assert mg.empty_function.__globals__[func.__name__] is func
     mg.reset_globals()
 
 @given(st.lists(st.functions()), WORD)
@@ -117,6 +126,7 @@ def test_trivial_mutations_list_and_file(func_list, file):
     mg.trivial_mutations(func_list, file=file)
     for func in func_list:
         assert_mutant_registry_correct((func.__name__).upper() + "_NOTHING", file)
+        assert func.__name__ in mg.empty_function.__globals__
     mg.reset_globals()
 
 @given(st.lists(WORD))
