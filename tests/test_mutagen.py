@@ -29,6 +29,14 @@ def assert_mutant_registry_correct(mutant_name, file_name, with_function_mapping
         assert "f" in func_map
         assert func_map["f"] is empty_function
 
+def assert_class_mutant_correct(class_, func_name):
+    class_name = class_.__name__
+    mutant_name = class_name.upper() + "." + func_name.upper() + "_NOTHING"
+    assert_mutant_registry_correct(mutant_name, mg.APPLY_TO_ALL)
+    assert mg.g_mutant_registry[mg.APPLY_TO_ALL][mutant_name].function_mappings[class_name+"."+func_name] is mg.empty_function
+    assert class_name in mg.empty_function.__globals__
+    assert mg.empty_function.__globals__[class_name] is class_
+
 ################
 # Actual tests #
 ################
@@ -137,12 +145,25 @@ def test_trivial_mutations_with_object(func_list):
 
     mg.trivial_mutations(func_list, ExampleClass)
     for func in func_list:
-        mutant_name = "EXAMPLECLASS." + func.upper() + "_NOTHING"
-        assert_mutant_registry_correct(mutant_name, mg.APPLY_TO_ALL)
-        assert mg.g_mutant_registry[mg.APPLY_TO_ALL][mutant_name].function_mappings["ExampleClass."+func] is mg.empty_function
-        assert "ExampleClass" in mg.empty_function.__globals__
-        assert mg.empty_function.__globals__["ExampleClass"] is ExampleClass
+        assert_class_mutant_correct(ExampleClass, func)
     mg.reset_globals()
+
+# Test trivial_mutations_all
+
+@given(st.lists(st.tuples(st.functions(), WORD)))
+def test_trivial_mutations_all(func_list):
+    class ExampleClass:
+        def __init__(self):
+            pass
+    for func, name in func_list:
+        func.__name__ = name
+        setattr(ExampleClass, name, func)
+
+    mg.trivial_mutations_all(ExampleClass)
+    for func, name in func_list:
+        assert_class_mutant_correct(ExampleClass, name)
+    mg.reset_globals()
+
 
 # Test active_mutant
 

@@ -103,6 +103,16 @@ def trivial_mutations(functions, obj=None, file=APPLY_TO_ALL):
             empty_function.__globals__[fname] = func
         mutant_of(fname, fname.upper() + "_NOTHING", file=file)(empty_function)
 
+def trivial_mutations_all(objects, file=APPLY_TO_ALL):
+    if not isinstance(objects, list):
+        objects = [objects]
+    for obj in objects:
+        functions_to_mutate = []
+        for name, member in obj.__dict__.items():
+            if inspect.isfunction(member):
+                functions_to_mutate.append(name)
+        trivial_mutations(functions_to_mutate, obj, file)
+
 def reset_globals():
     global g_mutant_registry
     global linked_files

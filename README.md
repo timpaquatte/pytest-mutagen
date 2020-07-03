@@ -152,7 +152,17 @@ def clear_mut(*args, **kwargs):
 ```
 
 `trivial_mutations` has an optional _file_ parameter to specify the test file where the mutations 
-should be applied, which is by default set to APPLY_TO_ALL.
+should be applied, which is by default set to APPLY_TO_ALL.  
+
+The function `trivial_mutations_all(object, file=APPLY_TO_ALL)` applies this process to each
+method of the class (or list of classes) given as a parameter.  
+Example:
+
+```python
+from module import ExampleClass
+
+mg.trivial_mutations_all(ExampleClass)
+```
 
 ## Examples
 You can find some examples in the examples folder
