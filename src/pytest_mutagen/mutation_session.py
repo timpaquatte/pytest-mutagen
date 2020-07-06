@@ -180,8 +180,8 @@ class MutateModule:
             if not "." in func_name:
                 func_to_modify = MutateModule.get_object_to_modify(func_name, f, repl)
 
-                saved[func_name] = func_to_modify.__globals__[func_name].__code__
-                func_to_modify.__globals__[func_name].__code__ = repl.__code__
+                saved[func_name] = func_to_modify.__code__
+                func_to_modify.__code__ = repl.__code__
             else:
                 l = func_name.split(".", 1)
                 class_to_modify = MutateModule.get_object_to_modify(l[0], f, repl)
@@ -207,7 +207,7 @@ class MutateModule:
         for func_name in saved:
             if not "." in func_name:
                 func_to_modify = MutateModule.get_object_to_modify(func_name, f, mutant.function_mappings[func_name])
-                func_to_modify.__globals__[func_name].__code__ = saved[func_name]
+                func_to_modify.__code__ = saved[func_name]
             else:
                 l = func_name.split(".", 1)
                 class_to_modify = MutateModule.get_object_to_modify(l[0], f, mutant.function_mappings[func_name])
