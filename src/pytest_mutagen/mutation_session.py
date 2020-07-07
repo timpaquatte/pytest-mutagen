@@ -9,11 +9,17 @@ import pytest_mutagen.mutagen as mg
 from pytest_mutagen import plugin as pl
 
 class MutationSession:
+    '''
+    The whole mutation session, its role is to create all MutateModule objects with the right name,
+    functions and mutants. All of this is stored in self.collected, its format is described in
+    get_stacked_collection.
+    '''
     def __init__(self, session):
+        ''' Initialize all attributes and handle the --select option '''
+
         self.session = session
         self.reporter = session.config.pluginmanager.get_plugin("terminalreporter")
         self.collected = []
-        self.initial_modules = set(sys.modules.keys()).copy()
 
         if len(self.reporter.getreports("error")) > 0 or len(self.reporter.getreports("failed")) > 0:
             return
@@ -31,6 +37,7 @@ class MutationSession:
         self.get_stacked_collection()
 
     def run_session(self):
+        ''' Run all collected modules '''
 
         for suite in self.collected:
             for item in suite[:-2]:
@@ -42,6 +49,20 @@ class MutationSession:
             self.reporter.stats["failed"] = []
 
     def get_stacked_collection(self):
+        '''
+        Parse session.items, create all MutateModule objects and fill self.collected
+
+        Format of self.collected:
+        List of lists (one list per MutateModule object) where each list contains the stacked headers
+        to display before each MutateModule. Example:
+
+        [[<Package>, <Module>, <MutateModule>], [<Module>, <MutateModule>],
+            [<Module>, <MutateModule>], [<Module>, <MutateModule>],
+            [<Package>, <Module>, <MutateModule>]]
+
+        The MutateModule object is the last item of each sublist, and each Package and Module appear
+        in one unique sublist.
+        '''
         items = self.session.items
 
         # Syntax from by _pytest.terminal.TerminalReporter._printcollecteditems
@@ -67,6 +88,8 @@ class MutationSession:
 
     @staticmethod
     def _remove_classes(l):
+        ''' Delete all instances of Class or Instance from the list l '''
+
         i = 0
         while i < len(l):
             if isinstance(l[i], Class) or isinstance(l[i], Instance):
@@ -76,7 +99,16 @@ class MutationSession:
 
 
 class MutateModule:
+    ''' Store the mutants and the functions of a test module (~test file) and run them '''
+
     def __init__(self, session, needed_collectors):
+        '''
+        Initialize every attribute
+
+        Inputs:
+            * session [pytest session]
+            * needed_collector [list]
+        '''
         self.basename = path.basename(needed_collectors[-2].name)
         self.mutants = self.get_mutants_per_module(self.basename)
         self.collection = [needed_collectors[-1]]
@@ -85,12 +117,18 @@ class MutateModule:
 
     @staticmethod
     def get_mutants_per_module(module_name):
+        ''' Return all mutants to be applied to a particular module '''
+
         muts = list(mg.g_mutant_registry[mg.APPLY_TO_ALL].values())
         if module_name in mg.g_mutant_registry:
             muts += list(mg.g_mutant_registry[module_name].values())
         return muts
 
     def run_mutations(self):
+        '''
+        Run the test module once for each mutant.
+        Handle the --quick-mut option and the cache
+        '''
         if self.session.config.getoption(pl.QUICK_MUTATIONS):
             self.mutants = [x for x in self.mutants if x.nb_catches == 0]
             if len(self.mutants) == 0:
@@ -131,6 +169,8 @@ class MutateModule:
                 self.reporter.write_line("\t" + mutant.name)
 
     def check_cache_and_rearrange(self, mutant_name):
+        ''' For a given mutant, rearrange self.collection to put the failures in first position '''
+
         cached_failures = self.session.config.cache.get("mutagen/" + self.basename + "/" + mutant_name, None)
         expected_failures = []
         expected_successes = []
@@ -144,12 +184,21 @@ class MutateModule:
             self.collection = expected_failures + expected_successes
 
     def write_in_cache(self, item, mutant_name):
+        '''
+        Write the item that caught a mutant in the cache
+
+        Inputs:
+            * item [pytest item]
+            * mutant_name [string] is the caught mutant
+        '''
         l = self.session.config.cache.get("mutagen/" + self.basename + "/" + mutant_name, None)
         new_val = self.get_func_from_item(item).__qualname__
         self.session.config.cache.set("mutagen/" + self.basename + "/" + mutant_name, ([] if l is None else l) + [new_val])
 
     @staticmethod
     def get_func_from_item(item):
+        ''' Return the function linked to a pytest_item '''
+
         if not hasattr(item, "function"):
             return None
         if hasattr(item.function, "is_hypothesis_test") and getattr(item.function, "is_hypothesis_test"):
@@ -158,6 +207,15 @@ class MutateModule:
 
     @staticmethod
     def get_object_to_modify(obj_name, f, repl):
+        '''
+        Return the function or class that will be mutated in modify_environment
+
+        Inputs:
+            * obj_name [string] is the name of the object
+            * f [function] is the test function, that sometimes contains the object in its globals
+            * repl [function] is the replacement function, that should contain the object in its
+                globals
+        '''
         obj_to_modify = None
         if hasattr(repl, "__globals__") and obj_name in repl.__globals__:
             obj_to_modify = repl.__globals__[obj_name]
@@ -170,6 +228,15 @@ class MutateModule:
 
     @staticmethod
     def modify_environment(item, mutant):
+        '''
+        The important function, that applies a mutant.
+        For top-level function the __code__ attribute is switched and for class methods the whole
+        function is replaced in the __dict__ of the class
+
+        Inputs:
+            * item [pytest item] is the current item (test function)
+            * mutant [Mutant] is the mutant that will be applied
+        '''
         saved = {}
         f = MutateModule.get_func_from_item(item)
 
@@ -202,6 +269,14 @@ class MutateModule:
 
     @staticmethod
     def restore_environment(item, mutant, saved):
+        '''
+        Restore the environment by performing the reverse actions of modify_environment
+
+        Inputs:
+            * item [pytest item] is the current item (test function)
+            * mutant [Mutant] is the mutant that will be applied
+            * saved [dict] stores the original versions of the functions
+        '''
         f = MutateModule.get_func_from_item(item)
 
         for func_name in saved:
@@ -215,6 +290,8 @@ class MutateModule:
 
 
 def display_item(reporter, item):
+    ''' Print an item in the given reporter '''
+
     reporter._tw.line()
     if isinstance(item, Package):
         reporter.write_sep("-", "Package " + path.basename(item.name), bold=False)

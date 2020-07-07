@@ -24,16 +24,26 @@ class Mutant(object):
 
 
 def active_mutant(mutation):
+    ''' Return True if the current active mutant is mutation, else False '''
     global g_current_mutant
     return g_current_mutant and \
         g_current_mutant.name == mutation
 
 
 def not_mutant(mutation):
+    ''' Return False if the current active mutant is mutation, else True '''
     return not active_mutant(mutation)
 
 
 def mut(mutation, good, bad):
+    '''
+    Execute and return the result of an expression depending on the current active mutant
+
+    Inputs:
+        * mutation [string] represents a mutant name
+        * good [lambda expression] corresponds to the normal behavior
+        * bad [lambda expression] corresponds to the mutated behavior
+    '''
     global g_current_mutant
 
     if g_current_mutant and g_current_mutant.name == mutation:
@@ -42,6 +52,13 @@ def mut(mutation, good, bad):
         return good()
 
 def check_linked_files(file, default_value):
+    '''
+    Replace each file in the list with its eventual linked file
+
+    Inputs:
+        * file [string | list] file name(s)
+        * default_value [string] value used if file is None
+    '''
     file = file if not file is None else default_value
     files = []
     if isinstance(file, str):
@@ -55,7 +72,16 @@ def check_linked_files(file, default_value):
 
 
 def mutant_of(fname, mutant_name, file=None, description=""):
+    '''
+    Decorator that registers the function to which it is applied as a mutant version of the
+    function fname
 
+    Inputs:
+        * fname [string] is the name of the function that will be mutated
+        * mutant_name [string] is the name of this mutant
+        * file [string] is the name of the test file where the mutation will be applied
+        * description [string] is the optional description of the mutant
+    '''
     def decorator(f):
         files = check_linked_files(file, path.basename(inspect.stack()[1].filename))
 
@@ -69,7 +95,14 @@ def mutant_of(fname, mutant_name, file=None, description=""):
     return decorator
 
 def has_mutant(mutant_name, file=None, description=""):
+    '''
+    Decorator that registers the function to which it is applied as an inline mutant
 
+    Inputs:
+        * mutant_name [string] is the name of this mutant
+        * file [string] is the name of the test file where the mutation will be applied
+        * description [string] is the optional description of the mutant
+    '''
     def decorator(f):
         files = check_linked_files(file, APPLY_TO_ALL)
 
@@ -84,15 +117,33 @@ def has_mutant(mutant_name, file=None, description=""):
     return decorator
 
 def link_to_file(filename):
+    '''
+    Link the file where it is written to filename
+
+    Input: filename [string]
+    '''
     global linked_files
 
     current_file = path.basename(inspect.stack()[1].filename)
     linked_files[current_file] = filename
 
 def empty_function(*args, **kwargs):
+    ''' This function is used as a mutant function in trivial_mutations '''
     pass
 
 def trivial_mutations(functions, obj=None, file=APPLY_TO_ALL):
+    '''
+    Automatically register mutants where the empty function will replace the functions given as
+    parameter
+
+    Inputs:
+        * functions [string | function | list] are the functions to be mutated if obj is None, and
+            the names of the methods of obj to be mutated is obj is not None
+        * obj [class] is the class where the methods to mutate are (by default None for top-level
+            functions)
+        * file [string | list] the file(s) where the mutations will be applied (by default applied
+            to all files)
+    '''
     if not isinstance(functions, list):
         functions = [functions]
     if not obj is None:
@@ -104,6 +155,15 @@ def trivial_mutations(functions, obj=None, file=APPLY_TO_ALL):
         mutant_of(fname, fname.upper() + "_NOTHING", file=file)(empty_function)
 
 def trivial_mutations_all(objects, file=APPLY_TO_ALL):
+    '''
+    Automatically register mutants where the empty function will replace all the methods of the
+    object(s) given as parameter
+
+    Inputs:
+        * obj [class | list] is the class where the methods to mutate are (can be a list of classes)
+        * file [string | list] the file(s) where the mutations will be applied (by default applied
+            to all files)
+    '''
     if not isinstance(objects, list):
         objects = [objects]
     for obj in objects:
@@ -114,6 +174,7 @@ def trivial_mutations_all(objects, file=APPLY_TO_ALL):
         trivial_mutations(functions_to_mutate, obj, file)
 
 def reset_globals():
+    ''' Reset all declared global variables '''
     global g_mutant_registry
     global linked_files
     global g_current_mutant
