@@ -3,7 +3,7 @@ import parso
 import argparse
 from os import path
 
-RED   = "\033[1;31m"
+RED   = "\033[1;37;41m"
 BLUE  = "\033[1;34m"
 CYAN  = "\033[1;36m"
 GREEN = "\033[0;32m"
@@ -49,18 +49,18 @@ def find_mutants_rec(node):
     current_func_name = get_func_name(current_func)
     for child in node.children:
         start_pos, end_pos, new_str = None, None, ""
-        if child.type in ["funcdef", "suite", "simple_stmt", "expr_stmt"]:
+        if child.type in ["funcdef", "suite", "simple_stmt", "expr_stmt", "comparison"]:
             find_mutants_rec(child)
             continue
 
         if child.type == "if_stmt":
-            # "if condition:" ---> "if not (condition):"
+            # "if not condition:" ---> "if condition:"
             if child.children[1].type == "not_test":
                 keyword_not = child.children[1].children[0]
 
                 start_pos, end_pos = relative_positions(keyword_not.start_pos, keyword_not.end_pos, current_func)
                 new_str = ""
-            # "if not condition:" ---> "if condition:"
+            # "if condition:" ---> "if not (condition):"
             else:
                 keyword = child.children[0]
                 condition = child.children[1]
@@ -81,6 +81,53 @@ def find_mutants_rec(node):
             start_pos, end_pos = relative_positions(child.end_pos, child.parent.end_pos, current_func)
             start_pos = start_pos[0], start_pos[1] + 1
             new_str = "None"
+
+        # operators switch
+        elif child.type == "operator":
+            operator_mutations = {
+                    '+': '-',
+                    '-': '+',
+                    '*': '/',
+                    '/': '*',
+                    '//': '/',
+                    '%': '/',
+                    '<<': '>>',
+                    '>>': '<<',
+                    '&': '|',
+                    '|': '&',
+                    '^': '&',
+                    '**': '*',
+                    '~': '',
+
+                    '+=': '-=',
+                    '-=': '+=',
+                    '*=': '/=',
+                    '/=': '*=',
+                    '//=': '/=',
+                    '%=': '/=',
+                    '<<=': '>>=',
+                    '>>=': '<<=',
+                    '&=': '|=',
+                    '|=': '&=',
+                    '^=': '&=',
+                    '**=': '*=',
+                    '~=': '=',
+
+                    '<': '<=',
+                    '<=': '<',
+                    '>': '>=',
+                    '>=': '>',
+                    '==': '!=',
+                    '!=': '==',
+                    '<>': '==',
+                }
+            if child.value in operator_mutations:
+                start_pos, end_pos = relative_positions(child.start_pos, child.end_pos, current_func)
+                new_str = operator_mutations[child.value]
+        elif child.type == "return_stmt":
+            start_pos, end_pos = relative_positions(child.start_pos, child.end_pos, current_func)
+            new_str = "pass"
+            find_mutants_rec(child)
 
         if start_pos is not None:
             str_mutant = StrMutant(current_func_name, start_pos, end_pos, new_str)
