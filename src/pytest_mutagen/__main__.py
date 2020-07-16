@@ -1,7 +1,9 @@
 import sys
+import os
 import parso
 import argparse
 from os import path
+from py.io import TerminalWriter
 
 RED   = "\033[1;37;41m"
 BLUE  = "\033[1;34m"
@@ -173,22 +175,42 @@ def main():
 
     parser = argparse.ArgumentParser(description="Suggest mutants to the user that can keep them or delete them.\n\
                                         The kept mutants are written to a file and ready to use with pytest-mutagen")
-    parser.add_argument('input_file', type=argparse.FileType('r'),
-                        help='path to the file(s) to mutate')
-    parser.add_argument('-o', '--output-file', default="mutations.py", type=argparse.FileType('w'),
-                        help='path to the file where the sum should be written')
+    parser.add_argument('input_path',
+                        help='path to the file or directory to mutate')
+    parser.add_argument('-o', '--output-path', default="mutations.py",
+                        help='path to the file or directory where the mutants should be written')
     parser.add_argument('-m', '--module-path', default=None,
                         help='path to the module directory (location of __init__.py) for import purposes')
     args = parser.parse_args()
-    input_file = args.input_file
-    output_file = args.output_file
-    module_path = args.module_path if args.module_path else path.dirname(input_file.name)
+    input_file_path = args.input_path
+    output_path = args.output_path
+
+    if path.isdir(input_file_path):
+        for root, dirs, files in os.walk(input_file_path, topdown=True):
+            for filename in files:
+                if filename.endswith('.py'):
+                    module_path = args.module_path if args.module_path else input_file_path
+                    mutate_file(os.path.join(root, filename), \
+                        path.join(output_path, "mutations_" + filename) if path.isdir(output_path) else "mutations_" + filename,\
+                        module_path)
+    else:
+        module_path = args.module_path if args.module_path else path.dirname(input_file_path)
+        mutate_file(input_file_path, path.join(output_path, "mutations.py") if path.isdir(output_path) else output_path, module_path)
+
+def mutate_file(input_file_path, output_file_name, module_path):
+    global all_mutants
+
+    input_file = open(input_file_path, "r")
     content = input_file.read()
     input_file.close()
 
+    all_mutants = {}
     tree = parso.parse(content)
     find_mutants(tree)
+    if len(all_mutants) == 0:
+        return
 
+    output_file = open(output_file_name, "w")
     output_file.write("import pytest_mutagen as mg\n")
     output_file.write("import " + path.basename(module_path) + "\n")
     output_file.write("from " + make_valid_import(input_file.name, module_path) + " import ")
@@ -198,6 +220,7 @@ def main():
     output_file.write("mg.link_to_file(mg.APPLY_TO_ALL)\n\n")
     output_file.close()
 
+    TerminalWriter().sep("=", path.basename(input_file_path))
 
     for child in tree.children:
         if child.type == "funcdef":
@@ -230,6 +253,7 @@ def main():
                     del mutant
                 else:
                     write_to_mutation_file(output_file, func_code, mutant, i)
+    all_mutants = {}
 
 if __name__=="__main__":
     main()
