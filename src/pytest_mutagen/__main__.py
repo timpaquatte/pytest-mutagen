@@ -2,6 +2,7 @@ import sys
 import os
 import parso
 import argparse
+import hashlib
 from os import path
 from py.io import TerminalWriter
 
@@ -13,9 +14,11 @@ RESET = "\033[0;0m"
 
 all_mutants = {}
 current_func = None
+mutant_count = 0
 
 class StrMutant:
-    def __init__(self, func_name, start_pos, end_pos, new_str):
+    def __init__(self, name, func_name, start_pos, end_pos, new_str):
+        self.name = name
         self.func_name = func_name
         self.start_pos = start_pos
         self.end_pos = end_pos
@@ -23,6 +26,10 @@ class StrMutant:
     def __str__(self):
         return "[" + self.func_name + " | " + str(self.start_pos) + " --> " + str(self.end_pos) + \
             ": " + self.new_str + "]"
+    @property
+    def hash(self):
+        s = ":".join((self.name, self.func_name, str(self.start_pos), str(self.end_pos), self.new_str))
+        return hashlib.shake_128(str.encode(s)).hexdigest(8)
 
 def get_func_name(function_node):
     for child in function_node.children:
@@ -31,10 +38,12 @@ def get_func_name(function_node):
 
 def find_mutants(node):
     global current_func
+    global mutant_count
 
     for child in node.children:
         if child.type == "funcdef":
             current_func = child
+            mutant_count = 0
             find_mutants_rec(child)
             current_func = None
 
@@ -47,6 +56,7 @@ def relative_positions(start, end, func):
 def find_mutants_rec(node):
     global all_mutants
     global current_func
+    global mutant_count
 
     current_func_name = get_func_name(current_func)
     for child in node.children:
@@ -126,13 +136,16 @@ def find_mutants_rec(node):
             if child.value in operator_mutations:
                 start_pos, end_pos = relative_positions(child.start_pos, child.end_pos, current_func)
                 new_str = operator_mutations[child.value]
+        # return ... ---> pass
+        # and the content od the return can be mutated too
         elif child.type == "return_stmt":
             start_pos, end_pos = relative_positions(child.start_pos, child.end_pos, current_func)
             new_str = "pass"
             find_mutants_rec(child)
 
         if start_pos is not None:
-            str_mutant = StrMutant(current_func_name, start_pos, end_pos, new_str)
+            str_mutant = StrMutant(current_func_name.upper()+"_"+str(mutant_count), current_func_name, start_pos, end_pos, new_str)
+            mutant_count += 1
             if current_func_name not in all_mutants:
                 all_mutants[current_func_name] = [str_mutant]
             else:
@@ -148,16 +161,17 @@ def print_enlight(func_code, mutant, color):
         else:
             print(line)
 
-def write_to_mutation_file(output_file, func_code, mutant, index):
-    file = open(output_file.name, "a")
+def write_to_mutation_file(output_file, func_code, mutant):
+    file = open(output_file, "a")
 
-    file.write("@mg.mutant_of(\"" + mutant.func_name + "\", \"" + mutant.func_name.upper() + "_" + str(index) + "\")\n")
+    file.write("#hash=" + mutant.hash + "\n")
+    file.write("@mg.mutant_of(\"" + mutant.func_name + "\", \"" + mutant.name + "\")\n")
     start = mutant.start_pos
     end = mutant.end_pos
 
     for i, line in enumerate(func_code):
         if i == 0:
-            file.write("def" + line[3:].replace(mutant.func_name, mutant.func_name + "_" + str(index), 1) + "\n")
+            file.write("def" + line[3:].replace(mutant.func_name, mutant.name.lower(), 1) + "\n")
         elif i == start[0]:
             file.write(line[:start[1]] + mutant.new_str + line[end[1]:] + "\n")
         else:
@@ -170,6 +184,17 @@ def make_valid_import(file, module):
 
     return path.join(path.basename(module), path.relpath(file, start=module)).replace("/", ".")[:-3]
 
+def check_already_written(filename):
+    global all_mutants
+    hash_list = []
+
+    with open(filename, "r") as file:
+        lines = file.read().split("\n")
+        for l in lines:
+            if l.startswith("#hash="):
+                hash_list.append(l[6:])
+    return hash_list
+
 def main():
     global all_mutants
 
@@ -177,13 +202,13 @@ def main():
                                         The kept mutants are written to a file and ready to use with pytest-mutagen")
     parser.add_argument('input_path',
                         help='path to the file or directory to mutate')
-    parser.add_argument('-o', '--output-path', default="mutations.py",
+    parser.add_argument('-o', '--output-path', default=None,
                         help='path to the file or directory where the mutants should be written')
     parser.add_argument('-m', '--module-path', default=None,
                         help='path to the module directory (location of __init__.py) for import purposes')
     args = parser.parse_args()
     input_file_path = args.input_path
-    output_path = args.output_path
+    output_path = args.output_path if args.output_path else "mutations_"+path.basename(input_file_path)
 
     if path.isdir(input_file_path):
         for root, dirs, files in os.walk(input_file_path, topdown=True):
@@ -205,22 +230,37 @@ def mutate_file(input_file_path, output_file_name, module_path):
     input_file.close()
 
     all_mutants = {}
+    already_written_hash = []
     tree = parso.parse(content)
     find_mutants(tree)
     if len(all_mutants) == 0:
         return
 
-    output_file = open(output_file_name, "w")
-    output_file.write("import pytest_mutagen as mg\n")
-    output_file.write("import " + path.basename(module_path) + "\n")
-    output_file.write("from " + make_valid_import(input_file.name, module_path) + " import ")
-    for i, func_name in enumerate(all_mutants.keys()):
-        output_file.write(func_name + (", " if i < len(all_mutants) - 1 else ""))
-    output_file.write("\n\n")
-    output_file.write("mg.link_to_file(mg.APPLY_TO_ALL)\n\n")
-    output_file.close()
-
     TerminalWriter().sep("=", path.basename(input_file_path))
+
+    if path.isfile(output_file_name):
+        print(CYAN + "The file", output_file_name, "already exists.")
+        print("\t(r) reset")
+        print("\t(c) continue where it stopped")
+        print("\t(a) abort" + RESET)
+        answer = input()
+        while answer not in ["r", "a", "c"]:
+            answer = input("Invalid choice, try again: ")
+
+        if answer == "r":   # reset
+            output_file = open(output_file_name, "w")
+            output_file.write("import pytest_mutagen as mg\n")
+            output_file.write("import " + path.basename(module_path) + "\n")
+            output_file.write("from " + make_valid_import(input_file.name, module_path) + " import ")
+            for i, func_name in enumerate(all_mutants.keys()):
+                output_file.write(func_name + (", " if i < len(all_mutants) - 1 else ""))
+            output_file.write("\n\n")
+            output_file.write("mg.link_to_file(mg.APPLY_TO_ALL)\n\n")
+            output_file.close()
+        elif answer == "a": # abort
+            return
+        elif answer == "c": # continue
+            already_written_hash = check_already_written(output_file_name)
 
     for child in tree.children:
         if child.type == "funcdef":
@@ -238,6 +278,9 @@ def mutate_file(input_file_path, output_file_name, module_path):
             for i, mutant in enumerate(all_mutants.get(func_name, [])):
                 title = "# Function " + func_name + " #"
 
+                if mutant.hash in already_written_hash:
+                    continue
+
                 print()
                 print("#"*len(title))
                 print(title)
@@ -252,7 +295,7 @@ def mutate_file(input_file_path, output_file_name, module_path):
                 if answer == "n":
                     del mutant
                 else:
-                    write_to_mutation_file(output_file, func_code, mutant, i)
+                    write_to_mutation_file(output_file_name, func_code, mutant)
     all_mutants = {}
 
 if __name__=="__main__":
