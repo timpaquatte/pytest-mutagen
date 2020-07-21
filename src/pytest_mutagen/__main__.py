@@ -67,9 +67,7 @@ def find_mutants_rec(node):
     current_func_name = get_func_name(current_func)
     for child in node.children:
         start_pos, end_pos, new_str = None, None, ""
-        if child.type in ["funcdef", "suite", "simple_stmt", "expr_stmt", "comparison"]:
-            find_mutants_rec(child)
-            continue
+
         if child.type == "if_stmt":
             # "if not condition:" ---> "if condition:"
             if child.children[1].type == "not_test":
@@ -95,8 +93,7 @@ def find_mutants_rec(node):
                 new_str += "not (" + condition_code + ")"
         # any right value ---> None
         elif child.type == "operator" and child.value == "=" and not (child.get_next_sibling().type == "keyword" and child.get_next_sibling().value == "None"):
-            start_pos, end_pos = relative_positions(child.end_pos, child.parent.end_pos, current_func)
-            start_pos = start_pos[0], start_pos[1] + 1
+            start_pos, end_pos = relative_positions(child.get_next_sibling().start_pos, child.parent.end_pos, current_func)
             new_str = "None"
 
         # operators switch
@@ -141,20 +138,32 @@ def find_mutants_rec(node):
             if child.value in operator_mutations:
                 start_pos, end_pos = relative_positions(child.start_pos, child.end_pos, current_func)
                 new_str = operator_mutations[child.value]
+            else:
+                continue
         # return ... ---> pass
         # and the content od the return can be mutated too
         elif child.type == "return_stmt":
             start_pos, end_pos = relative_positions(child.start_pos, child.end_pos, current_func)
             new_str = "pass"
+        # number ---> number + 1
+        elif child.type == "number":
+            start_pos, end_pos = relative_positions(child.start_pos, child.end_pos, current_func)
+            new_str = str(1 + eval(child.value))
+        else:
+            if hasattr(child, "children"):
+                find_mutants_rec(child)
+            continue
+
+        str_mutant = StrMutant(current_func_name.upper()+"_"+str(mutant_count), current_func_name, start_pos, end_pos, new_str)
+        mutant_count += 1
+        if current_func_name not in all_mutants:
+            all_mutants[current_func_name] = [str_mutant]
+        else:
+            all_mutants[current_func_name].append(str_mutant)
+
+        if hasattr(child, "children"):
             find_mutants_rec(child)
 
-        if start_pos is not None:
-            str_mutant = StrMutant(current_func_name.upper()+"_"+str(mutant_count), current_func_name, start_pos, end_pos, new_str)
-            mutant_count += 1
-            if current_func_name not in all_mutants:
-                all_mutants[current_func_name] = [str_mutant]
-            else:
-                all_mutants[current_func_name].append(str_mutant)
 
 def print_enlight(func_code, mutant, color):
     start = mutant.start_pos
@@ -307,7 +316,7 @@ def mutate_class(child, output_file_name, already_written_hash):
 
     TerminalWriter().sep(".")
 
-def remove_unnecessary_spaces(func_code):
+def remove_unnecessary_spaces(func_code, offset):
     empty_lines = 0
     for line in func_code:
         if line == "":
@@ -315,8 +324,6 @@ def remove_unnecessary_spaces(func_code):
         else:
             break
     func_code = func_code[empty_lines:]
-    offset = func_code[0].find("def")
-    assert offset != -1
 
     return [line[offset:] for line in func_code]
 
@@ -327,7 +334,7 @@ def mutate_function(child, output_file_name, already_written_hash):
     func_code = child.get_code().split("\n")
     func_name = get_func_name(child)
 
-    func_code = remove_unnecessary_spaces(func_code)
+    func_code = remove_unnecessary_spaces(func_code, child.start_pos[1])
 
     for i, mutant in enumerate(all_mutants.get(func_name, [])):
         title = "# Function " + func_name + " #"
