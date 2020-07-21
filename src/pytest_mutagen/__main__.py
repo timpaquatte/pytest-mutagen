@@ -14,6 +14,7 @@ RESET = "\033[0;0m"
 
 all_mutants = {}
 current_func = None
+current_class = None
 mutant_count = 0
 
 class StrMutant:
@@ -32,20 +33,25 @@ class StrMutant:
         return hashlib.shake_128(str.encode(s)).hexdigest(8)
 
 def get_func_name(function_node):
-    for child in function_node.children:
-        if child.type == "name":
-            return child.value
+    prefix = "" if current_class is None else current_class.name.value + "."
+    return prefix + function_node.name.value
 
 def find_mutants(node):
     global current_func
+    global current_class
     global mutant_count
 
     for child in node.children:
         if child.type == "funcdef":
             current_func = child
             mutant_count = 0
-            find_mutants_rec(child)
+            find_mutants_rec(child.get_suite())
             current_func = None
+        elif child.type == "classdef":
+            current_class = child
+            find_mutants(child.get_suite())
+            current_class = None
+            continue
 
 def relative_positions(start, end, func):
     start_pos = (start[0] - func.start_pos[0], start[1] - func.start_pos[1])
@@ -64,7 +70,6 @@ def find_mutants_rec(node):
         if child.type in ["funcdef", "suite", "simple_stmt", "expr_stmt", "comparison"]:
             find_mutants_rec(child)
             continue
-
         if child.type == "if_stmt":
             # "if not condition:" ---> "if condition:"
             if child.children[1].type == "not_test":
@@ -222,6 +227,21 @@ def main():
         module_path = args.module_path if args.module_path else path.dirname(input_file_path)
         mutate_file(input_file_path, path.join(output_path, "mutations.py") if path.isdir(output_path) else output_path, module_path)
 
+def get_imports():
+    global all_mutants
+    imports = []
+
+    for func in all_mutants.keys():
+        if '.' in func:
+            l = func.split('.')
+            if l[0] not in imports:
+                imports.append(l[0])
+        else:
+            imports.append(func)
+
+    return imports
+
+
 def mutate_file(input_file_path, output_file_name, module_path):
     global all_mutants
 
@@ -252,8 +272,7 @@ def mutate_file(input_file_path, output_file_name, module_path):
             output_file.write("import pytest_mutagen as mg\n")
             output_file.write("import " + path.basename(module_path) + "\n")
             output_file.write("from " + make_valid_import(input_file.name, module_path) + " import ")
-            for i, func_name in enumerate(all_mutants.keys()):
-                output_file.write(func_name + (", " if i < len(all_mutants) - 1 else ""))
+            output_file.write(", ".join(get_imports()))
             output_file.write("\n\n")
             output_file.write("mg.link_to_file(mg.APPLY_TO_ALL)\n\n")
             output_file.close()
@@ -264,39 +283,69 @@ def mutate_file(input_file_path, output_file_name, module_path):
 
     for child in tree.children:
         if child.type == "funcdef":
-            func_code = child.get_code().split("\n")
-            func_name = get_func_name(child)
-            empty_lines = 0
+            mutate_function(child, output_file_name, already_written_hash)
+        elif child.type == "classdef":
+            mutate_class(child, output_file_name, already_written_hash)
 
-            for line in func_code:
-                if line == "":
-                    empty_lines += 1
-                else:
-                    break
-            func_code = func_code[empty_lines:]
-
-            for i, mutant in enumerate(all_mutants.get(func_name, [])):
-                title = "# Function " + func_name + " #"
-
-                if mutant.hash in already_written_hash:
-                    continue
-
-                print()
-                print("#"*len(title))
-                print(title)
-                print("#"*len(title))
-                print("\nMutant:", GREEN + mutant.new_str + RESET)
-                print()
-
-                print_enlight(func_code, mutant, RED)
-                print(CYAN + "\tKeep? (n to delete)" + RESET, end="\t")
-                answer = input()
-
-                if answer == "n":
-                    del mutant
-                else:
-                    write_to_mutation_file(output_file_name, func_code, mutant)
+    print("Mutants written to", output_file_name)
     all_mutants = {}
+
+def mutate_class(child, output_file_name, already_written_hash):
+    global current_class
+
+    TerminalWriter().sep(".", child.name.value)
+
+    current_class = child
+    for c in child.get_suite().children:
+        if c.type == "funcdef":
+            mutate_function(c, output_file_name, already_written_hash)
+    current_class = None
+
+    TerminalWriter().sep(".")
+
+def remove_unnecessary_spaces(func_code):
+    empty_lines = 0
+    for line in func_code:
+        if line == "":
+            empty_lines += 1
+        else:
+            break
+    func_code = func_code[empty_lines:]
+    offset = func_code[0].find("def")
+    assert offset != -1
+
+    return [line[offset:] for line in func_code]
+
+
+def mutate_function(child, output_file_name, already_written_hash):
+    global all_mutants
+
+    func_code = child.get_code().split("\n")
+    func_name = get_func_name(child)
+
+    func_code = remove_unnecessary_spaces(func_code)
+
+    for i, mutant in enumerate(all_mutants.get(func_name, [])):
+        title = "# Function " + func_name + " #"
+
+        if mutant.hash in already_written_hash:
+            continue
+
+        print()
+        print("#"*len(title))
+        print(title)
+        print("#"*len(title))
+        print("\nMutant:", GREEN + mutant.new_str + RESET)
+        print()
+
+        print_enlight(func_code, mutant, RED)
+        print(CYAN + "\tKeep? (n to delete)" + RESET, end="\t")
+        answer = input()
+
+        if answer == "n":
+            del mutant
+        else:
+            write_to_mutation_file(output_file_name, func_code, mutant)
 
 if __name__=="__main__":
     main()
