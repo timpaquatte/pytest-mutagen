@@ -161,8 +161,10 @@ def print_enlight(func_code, mutant, color):
     end = mutant.end_pos
 
     for i, line in enumerate(func_code):
-        if i == start[0]:
-            print(line[:start[1]] + color + line[start[1]:end[1]] + RESET + line[end[1]:])
+        if start[0] <= i <= end[0]:
+            line_start = start[1] if i == start[0] else 0
+            line_end = end[1] if i == end[0] else len(line)
+            print(line[:line_start] + color + line[line_start:line_end] + RESET + line[line_end:])
         else:
             print(line)
 
@@ -174,12 +176,14 @@ def write_to_mutation_file(output_file, func_code, mutant):
     start = mutant.start_pos
     end = mutant.end_pos
 
-    for i, line in enumerate(func_code):
-        if i == 0:
-            file.write("def" + line[3:].replace(mutant.func_name, mutant.name.lower(), 1) + "\n")
-        elif i == start[0]:
-            file.write(line[:start[1]] + mutant.new_str + line[end[1]:] + "\n")
-        else:
+    file.write("def" + func_code[0][3:].replace(mutant.func_name, mutant.name.lower(), 1) + "\n")
+    for i, line in list(enumerate(func_code))[1:]:
+        if i == start[0]:
+            file.write(line[:start[1]] + mutant.new_str)
+        if i == end[0]:
+            file.write(line[end[1]:] + "\n")
+
+        if not (start[0] <= i <= end[0]):
             file.write(line + "\n")
 
     file.close()
