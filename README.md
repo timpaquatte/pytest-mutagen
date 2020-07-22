@@ -98,7 +98,7 @@ If you don't want to run the original test suite but only the mutations you can 
 
 ### Selective run of mutants
 
-The `--select` option expects a comma-separated list of mutants (no spaces) and will run these ones exclusively.  
+The `--select` option expects a comma-separated list of mutants (no spaces) and will run these ones exclusively.
 Example:
 ```sh
 python3 -m pytest --mutate --select INC_OBO,FLIP_LT
@@ -110,9 +110,9 @@ The `--mutagen-stats` option adds a section to the terminal summary, which displ
 
 ## Add trivial mutations
 
-To find holes in a test suite with mutagen, we often try trivial mutations on some functions (like 
-replacing them with pass) to see whether a lot of tests catch them or not. 
-For this purpose the `trivial_mutations(functions, obj=None, file=APPLY_TO_ALL)` function with a 
+To find holes in a test suite with mutagen, we often try trivial mutations on some functions (like
+replacing them with pass) to see whether a lot of tests catch them or not.
+For this purpose the `trivial_mutations(functions, obj=None, file=APPLY_TO_ALL)` function with a
 list of functions as input adds all mutants corresponding to replacing them by an empty function.
 There are two ways to use it:
 
@@ -151,11 +151,11 @@ def clear_mut(*args, **kwargs):
 	pass
 ```
 
-`trivial_mutations` has an optional _file_ parameter to specify the test file where the mutations 
-should be applied, which is by default set to APPLY_TO_ALL.  
+`trivial_mutations` has an optional _file_ parameter to specify the test file where the mutations
+should be applied, which is by default set to APPLY_TO_ALL.
 
 The function `trivial_mutations_all(object, file=APPLY_TO_ALL)` applies this process to each
-method of the class (or list of classes) given as a parameter.  
+method of the class (or list of classes) given as a parameter.
 Example:
 
 ```python
@@ -172,3 +172,32 @@ You can find some examples in the examples folder
 
 
 The run-tests.py scripts show how to run these tests
+
+# Automatic tool
+
+Writing mutations by hand can be very long and we are aware that it can discourage a lot of
+programmers from using pytest-mutagen, that is initially a manual mutation-testing tool. To fix
+this problem while keeping the ability to manually edit the mutants we've added the possibility
+to interactively generate a bunch of mutants following a set of rules.
+
+## Usage
+
+```sh
+python3 -m pytest_mutagen [-h] [-o OUTPUT_PATH] [-m MODULE_PATH] input_path
+```
+
+This command will browse the provided `input_path` (that can be a file or a directory) and
+interactively propose several mutants. You can accept them by pressing ENTER and refuse them by
+typing 'n' then ENTER. The purpose of this is to avoid false positives and equivalent mutants, that
+are among the main problems of mutation testing. Finally all accepted mutants are written in the
+mutagen syntax (ready to be use with `pytest --mutate`) in _mutation.py_ or the file/directory
+specified with the `-o` command-line option.
+For more details on its use you can use `python3 -m pytest_mutagen --help`.
+
+## Rules
+
+* Integers are incremented
+* Operators are switched to a different (but close) operator
+* In assignments, the right value is replaced with _None_
+* The return statement is removed
+* The condition of _if_ statements are replaced with _not (condition)_
