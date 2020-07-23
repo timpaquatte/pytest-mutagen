@@ -252,6 +252,8 @@ def main():
                         help='path to the file or directory where the mutants should be written')
     parser.add_argument('-m', '--module-path', default=None,
                         help='path to the module directory (location of __init__.py) for import purposes')
+    parser.add_argument('-r', '--reset', action="store_true",
+                        help='ignore existing files and reset them')
     args = parser.parse_args()
     input_file_path = args.input_path
     output_path = args.output_path
@@ -263,10 +265,12 @@ def main():
                     module_path = args.module_path if args.module_path else input_file_path
                     mutate_file(os.path.join(root, filename), \
                         path.join(output_path, "mutations_" + filename) if path.isdir(output_path) else "mutations_" + filename,\
-                        module_path)
+                        module_path, args.reset)
     else:
         module_path = args.module_path if args.module_path else path.dirname(input_file_path)
-        mutate_file(input_file_path, path.join(output_path, "mutations_"+path.basename(input_file_path)) if path.isdir(output_path) else output_path, module_path)
+        mutate_file(input_file_path, path.join(output_path,\
+            "mutations_"+path.basename(input_file_path)) if path.isdir(output_path) else output_path,\
+                module_path, args.reset)
 
 def get_imports():
     ''' Return the names of classes and top-level functions to import '''
@@ -284,7 +288,7 @@ def get_imports():
     return imports
 
 
-def mutate_file(input_file_path, output_file_name, module_path):
+def mutate_file(input_file_path, output_file_name, module_path, reset):
     '''
     Find the mutants in the input file and write the ones chosen by the user to the output file
     '''
@@ -297,7 +301,7 @@ def mutate_file(input_file_path, output_file_name, module_path):
     TerminalWriter().sep("=", path.basename(input_file_path))
 
     write_imports = True
-    if path.isfile(output_file_name):
+    if path.isfile(output_file_name) and not reset:
         write_imports = False
         print(CYAN + "The file", output_file_name, "already exists.")
         print("\t(r) reset")
