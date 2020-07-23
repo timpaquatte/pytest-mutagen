@@ -7,17 +7,26 @@ from os import path
 from py.io import TerminalWriter
 
 RED   = "\033[1;37;41m"
-BLUE  = "\033[1;34m"
 CYAN  = "\033[1;36m"
 GREEN = "\033[0;32m"
 RESET = "\033[0;0m"
 
+# Maps function names to the list of their mutants
 all_mutants = {}
+
+# For the "finding mutants" phase, keeps track of current function/class during the recursion
 current_func = None
 current_class = None
+
+# Enumerate the mutants inside a function to give them a unique name
 mutant_count = 0
 
 class StrMutant:
+    '''
+    Each mutant is represented by its name (mutagen style), the function where it's applied,
+    the start and end positions of the part to replace (tuples of relative positions to the beginning
+    of the function) and the string to insert at this location.
+    '''
     def __init__(self, name, func_name, start_pos, end_pos, new_str):
         self.name = name
         self.func_name = func_name
@@ -29,14 +38,23 @@ class StrMutant:
             ": " + self.new_str + "]"
     @property
     def hash(self):
+        '''
+        Hash value to uniquely identify each mutant in a file and recognize the one that we've already
+        treated
+        '''
         s = ":".join((self.name, self.func_name, str(self.start_pos), str(self.end_pos), self.new_str))
         return hashlib.shake_128(str.encode(s)).hexdigest(8)
 
 def get_func_name(function_node):
+    ''' Return the qualified name of a "funcdef" node '''
     prefix = "" if current_class is None else current_class.name.value + "."
     return prefix + function_node.name.value
 
 def find_mutants(node):
+    '''
+    Finds all class/functions of the file, sets the global variables and calls the
+    recursive search
+    '''
     global current_func
     global current_class
     global mutant_count
@@ -54,12 +72,14 @@ def find_mutants(node):
             continue
 
 def relative_positions(start, end, func):
+    '''Return the start and end positions relatively to the function '''
     start_pos = (start[0] - func.start_pos[0], start[1] - func.start_pos[1])
     end_pos = (end[0] - func.start_pos[0], end[1] - func.start_pos[1])
     return (start_pos, end_pos)
 
 
 def find_mutants_rec(node):
+    ''' Recursively search for mutants in a function '''
     global all_mutants
     global current_func
     global mutant_count
@@ -166,6 +186,7 @@ def find_mutants_rec(node):
 
 
 def print_enlight(func_code, mutant, color):
+    ''' Prints the function code with the mutated part highlighted in red '''
     start = mutant.start_pos
     end = mutant.end_pos
 
@@ -178,6 +199,7 @@ def print_enlight(func_code, mutant, color):
             print(line)
 
 def write_to_mutation_file(output_file, func_code, mutant):
+    ''' Write a mutant to the output_file in the mutagen syntax, and the hash as commentary '''
     file = open(output_file, "a")
 
     file.write("#hash=" + mutant.hash + "\n")
@@ -198,11 +220,13 @@ def write_to_mutation_file(output_file, func_code, mutant):
     file.close()
 
 def make_valid_import(file, module):
+    ''' Return the pythonic syntax to import file from module '''
     assert file[-3:] == ".py"
 
     return path.join(path.basename(module), path.relpath(file, start=module)).replace("/", ".")[:-3]
 
 def check_already_written(filename):
+    ''' Retrieve all hashes from a file, corresponding to the already written mutants '''
     global all_mutants
     hash_list = []
 
@@ -241,6 +265,7 @@ def main():
         mutate_file(input_file_path, path.join(output_path, "mutations.py") if path.isdir(output_path) else output_path, module_path)
 
 def get_imports():
+    ''' Return the names of classes and top-level functions to import '''
     global all_mutants
     imports = []
 
@@ -256,6 +281,9 @@ def get_imports():
 
 
 def mutate_file(input_file_path, output_file_name, module_path):
+    '''
+    Find the mutants in the input file and write the ones chosen by the user to the output file
+    '''
     global all_mutants
 
     input_file = open(input_file_path, "r")
@@ -304,6 +332,7 @@ def mutate_file(input_file_path, output_file_name, module_path):
     all_mutants = {}
 
 def mutate_class(child, output_file_name, already_written_hash):
+    ''' Set current_class and call mutate_function for all methods of the class '''
     global current_class
 
     TerminalWriter().sep(".", child.name.value)
@@ -317,6 +346,10 @@ def mutate_class(child, output_file_name, already_written_hash):
     TerminalWriter().sep(".")
 
 def remove_unnecessary_spaces(func_code, offset):
+    '''
+    Remove the first empty lines of a func_code object and the offset
+    in the case of class methods
+    '''
     empty_lines = 0
     for line in func_code:
         if line == "":
@@ -329,6 +362,7 @@ def remove_unnecessary_spaces(func_code, offset):
 
 
 def mutate_function(child, output_file_name, already_written_hash):
+    ''' Propose a mutant to the user and write it to the output file if it is accepted '''
     global all_mutants
 
     func_code = child.get_code().split("\n")
